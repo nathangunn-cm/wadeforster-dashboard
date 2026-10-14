@@ -405,7 +405,7 @@ const AUTO = [];
 // ---------- state ----------
 const RANGES = [['7 days', 7], ['30 days', 30], ['90 days', 90], ['6 months', 182], ['12 months', 365], ['Since AAA', 'aaa'], ['All time', 'all']];
 let st = {range: '12 months', overlays: {rel: true, shows: true, pl: true, mile: true}, track: null, sort: 'cur', dir: -1, proj: null, q: '', showAll: false, showTab: 'up', plTab: 'current', plPlat: '', plAll: false};
-const PUBLIC_URL = 'https://nathangunn-cm.github.io/wadeforster-dashboard/';
+const PUBLIC_URL = 'https://wadeforster-dashboard.nathan-gunn.workers.dev/';
 const isoOk = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '') && !isNaN(Date.parse(s));
 st.custom = {a: iso(Math.max(0, LAST - 59)), b: iso(LAST)};
 try { const r = localStorage.getItem('wf-range'); if (r && (RANGES.some(x => x[0] === r) || r === 'Custom')) st.range = r;
@@ -556,7 +556,7 @@ function renderRanges(){ const box = document.getElementById('ranges'); box.text
       RELEASES.filter(r => r.day >= 0 && r.day <= LAST).slice().sort((p, q) => q.day - p.day).map(r => h('option', {value: iso(r.day), text: fmtD(r.day, {year: '2-digit'}) + ' · ' + r.label + (r.kind === 'Album' || r.kind === 'EP' ? ' (' + r.kind + ')' : '')})));
     sel.addEventListener('change', () => { if (sel.value){ st.custom = {a: sel.value, b: iso(LAST)}; setRange('Custom'); } });
     const link = PUBLIC_URL + '?from=' + iso(a) + '&to=' + iso(b);
-    const copy = h('button', {class: 'btn ghost', title: 'Copy a public link that opens the dashboard on these dates', text: 'Copy link', onclick: async e => { const btn = e.currentTarget;
+    const copy = h('button', {class: 'btn ghost', title: 'Copy a link to the sign-in protected site, opened on these dates', text: 'Copy link', onclick: async e => { const btn = e.currentTarget;
       try { await navigator.clipboard.writeText(link); btn.textContent = 'Link copied'; setTimeout(() => btn.textContent = 'Copy link', 2500); }
       catch(err){ const f = h('input', {type: 'text', value: link, readonly: true, style: 'width:min(100%,420px)', 'aria-label': 'Link to these dates'}); btn.replaceWith(f); f.focus(); f.select(); } }});
     cb.append(h('label', {class: 'note'}, 'From ', fi), h('label', {class: 'note'}, 'to ', ti), sel, copy); }
