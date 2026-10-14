@@ -179,6 +179,49 @@ h1.logo{margin:6px 0 2px;line-height:0}
 h1.logo img{display:block;height:auto;width:min(100%,520px);max-width:100%}
 .snapnote{margin:0 0 10px;padding:8px 10px;border-left:2px solid var(--accent);background:var(--accent-soft);color:var(--ink-2)}
 footer{margin-top:28px;font-size:12px;color:var(--muted);display:grid;gap:4px}
+
+[hidden]{display:none!important}
+#tracks.wide{grid-template-columns:minmax(0,1fr)}
+.pfnav{margin-top:18px}
+.barrow{min-width:0;max-width:100%}
+.bar{min-width:0;max-width:100%}
+.tabs{max-width:100%;min-width:0}
+.fresh{display:flex;flex-wrap:wrap;gap:4px 14px;padding:8px 0 10px;font:500 12px var(--f-body);color:var(--muted);border-bottom:1px solid var(--line)}
+.fresh b{color:var(--ink-2);font-weight:600}
+.fresh .f{white-space:nowrap}
+.fresh .old{color:var(--bad)}
+.bar{flex-direction:column;align-items:stretch;gap:8px}
+.barrow{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+.rangesel{display:none}
+.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:0 0 auto;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--ink-2);padding:6px 12px 7px;font:600 13px var(--f-display);text-transform:uppercase;letter-spacing:.14em;cursor:pointer}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tabs button:hover{color:var(--accent)}
+.pill.scope{margin-left:10px;vertical-align:4px;font-size:10px!important;background:transparent;border:1px solid var(--line);color:var(--muted)}
+.pill.scope.rng{border-color:var(--accent);color:var(--accent)}
+.weekgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.wk{border:1px solid var(--line);border-radius:3px;padding:12px 14px;min-width:0;display:grid;gap:6px;align-content:start;background:var(--surface)}
+.wk .v{font:600 26px/1.05 var(--f-display);font-variant-numeric:tabular-nums}
+.wk ul{list-style:none;margin:0;padding:0;display:grid;gap:5px;font-size:13px}
+.wk li{display:flex;justify-content:space-between;gap:10px;min-width:0}
+.wk li span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wk li b{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+details.sources summary{cursor:pointer;color:var(--ink-2);font:600 12px var(--f-display);letter-spacing:.12em;text-transform:uppercase}
+details.sources div{margin-top:8px}
+.kpi{gap:6px;padding:16px 18px}
+.kpi .v{margin-bottom:2px}
+.soc{display:grid;gap:4px;align-content:start}
+.chart text{font-size:12px!important}
+.chart .lbl{font-size:12px!important}
+@media (max-width:700px){
+  .bar .seg#ranges{display:none}
+  .rangesel{display:block;flex:1 1 auto;max-width:200px}
+  .bar{padding-block:8px;gap:6px}
+  .tabs button{padding:6px 9px 7px;font-size:12px;letter-spacing:.1em}
+  .rangelabel{font-size:11px;white-space:normal}
+  .card{padding:14px}
+}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 <style>[hidden]{display:none!important}img{max-width:100%}</style>
@@ -197,121 +240,146 @@ footer{margin-top:28px;font-size:12px;color:var(--muted);display:grid;gap:4px}
     <div class="asof" id="asof"></div>
   </header>
 
-  <div class="bar" role="toolbar" aria-label="Date range">
-    <div class="seg" id="ranges"></div>
-    <div class="controls" id="customrange" hidden></div>
-    <span class="rangelabel num" id="rangelabel"></span>
-    <nav class="nav" aria-label="Sections">
-      <a href="#onesheets-sec">One-sheets</a><a href="#spotify-sec">Spotify &amp; Apple</a><a href="#yt-sec">YouTube</a><a href="#tracks">Tracks</a><a href="#markets-sec">Markets</a><a href="#releases">Releases</a><a href="#aaa-sec">AAA</a><a href="#live">Live</a><a href="#playlists">Playlists</a><a href="#social">Social</a><a href="#milestones">Milestones</a>
-    </nav>
+  <div class="fresh" id="fresh" aria-label="Data freshness"></div>
+
+  <div class="bar" role="toolbar" aria-label="Date range and sections">
+    <div class="barrow">
+      <div class="seg" id="ranges"></div>
+      <select id="rangesel" class="rangesel" aria-label="Date range"></select>
+      <div class="controls" id="customrange" hidden></div>
+      <span class="rangelabel num" id="rangelabel"></span>
+    </div>
+    <nav class="tabs" id="tabs" role="tablist" aria-label="Dashboard sections"></nav>
   </div>
 
-  <div class="kpis" id="kpis"></div>
-
-  <section class="card" id="streams">
-    <div class="card-head">
-      <div><h2>Catalogue streams</h2><p>Daily worldwide streams, all tracks. The line is the 7-day average.</p></div>
-      <div class="toggles" id="overlays"></div>
-    </div>
-    <div class="chart" id="mainchart"></div>
-  </section>
-
-  <section class="card" id="onesheets-sec">
-    <div class="card-head"><div><h2>One-sheets</h2><p>Download a one-page PDF for each platform, built from the latest data here for the date range selected at the top.</p></div></div>
-    <div id="onesheets"></div>
-  </section>
-
-  <section class="card" id="spotify-sec">
-    <div class="card-head"><div><h2>Spotify &amp; Apple Music</h2><p>Spotify for Artists audience timeline, per-song breakdown, and how each song splits across platforms.</p></div></div>
-    <div id="spotify"></div>
-    <div id="platforms"></div>
-  </section>
-
-  <section class="grid2" id="tracks">
-    <div class="card">
+  <div data-tab="overview">
+    <section class="card" id="thisweek">
+      <div class="card-head"><div><h2 data-scope="Last 7 days of data">This week</h2><p>The latest week of data at a glance, compared with the week before. Built from the same data as the rest of the dashboard.</p></div></div>
+      <div id="weekgrid"></div>
+    </section>
+    <div class="kpis" id="kpis"></div>
+    <section class="card" id="streams">
       <div class="card-head">
-        <div><h2>Tracks</h2><p>Streams in the selected range. Select a track to chart it.</p></div>
-        <div class="controls"><input type="search" id="tq" placeholder="Find a track" aria-label="Find a track"></div>
+        <div><h2 data-scope="range">Catalogue streams</h2><p>Daily worldwide streams, all tracks. The line is the 7-day average.</p></div>
+        <div class="toggles" id="overlays"></div>
       </div>
-      <div class="toggles" id="projfilter" style="margin-bottom:8px"></div>
-      <div id="trackdetail"></div>
-      <div class="tablewrap"><table id="tracktable"></table></div>
-    </div>
-    <div style="display:grid;gap:18px;align-content:start">
+      <div class="chart" id="mainchart"></div>
+    </section>
+    <section class="card" id="onesheets-sec">
+      <div class="card-head"><div><h2 data-scope="range">One-sheets</h2><p>Download a one-page PDF for each platform, built from the latest data here for the date range selected at the top.</p></div></div>
+      <div id="onesheets"></div>
+    </section>
+  </div>
+
+  <div data-tab="songs" hidden>
+    <section class="grid2" id="tracks">
       <div class="card">
-        <div class="card-head"><div><h2>By project</h2><p>Streams in range, grouped by album or EP.</p></div></div>
-        <div class="hbars" id="projbars"></div>
+        <div class="card-head">
+          <div><h2 id="songs-h" data-scope="range">Songs</h2><p id="songs-p">Streams in the selected range. Select a song to chart it.</p></div>
+          <div class="controls"><div class="seg" id="songviews" role="group" aria-label="Song table view"></div></div>
+        </div>
+        <div data-songview="range">
+          <div class="controls" style="margin-bottom:8px"><input type="search" id="tq" placeholder="Find a song" aria-label="Find a song"></div>
+          <div class="toggles" id="projfilter" style="margin-bottom:8px"></div>
+          <div id="trackdetail"></div>
+          <div class="tablewrap"><table id="tracktable"></table></div>
+        </div>
+        <div data-songview="spotify" hidden><div id="spsongs"></div></div>
+        <div data-songview="platforms" hidden><div id="platforms"></div></div>
       </div>
-      <div class="card">
-        <div class="card-head"><div><h2>Stream mix</h2><p>Share of streams in range by Luminate tier.</p></div></div>
-        <div class="hbars" id="mixbars"></div>
+      <div style="display:grid;gap:18px;align-content:start">
+        <div class="card">
+          <div class="card-head"><div><h2 data-scope="range">By project</h2><p>Streams in range, grouped by album or EP.</p></div></div>
+          <div class="hbars" id="projbars"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div><h2 data-scope="range">Stream mix</h2><p>Share of streams in range by Luminate tier.</p></div></div>
+          <div class="hbars" id="mixbars"></div>
+        </div>
       </div>
-      <div class="card">
-        <div class="card-head"><div><h2>Territories</h2><p>Lifetime streams by country.</p></div></div>
+    </section>
+    <section class="card" id="releases">
+      <div class="card-head"><div><h2 data-scope="Fixed windows from release day">Releases</h2><p>Every single, EP and album date from the master release file, with how the release opened. Album rows total the tracks first released that day.</p></div></div>
+      <div class="tablewrap"><table id="reltable"></table></div>
+    </section>
+  </div>
+
+  <div data-tab="platforms" hidden>
+    <div class="pfnav"><div class="seg" id="pftabs" role="group" aria-label="Platform"></div></div>
+    <section class="card" id="spotify-sec" data-pfview="spotify">
+      <div class="card-head"><div><h2 data-scope="Latest · chart follows range">Spotify</h2><p>Spotify for Artists audience: listeners, followers and super listeners, with the daily timeline. Per-song Spotify and Apple Music figures are in the Songs tab.</p></div></div>
+      <div id="spotify"></div>
+    </section>
+    <section class="card" id="playlists" data-pfview="playlists">
+      <div class="card-head">
+        <div><h2 data-scope="Current &amp; past placements">Playlists</h2><p>Which playlists drive streams, and every editorial placement Chartmetric has tracked on Spotify, Apple Music and Amazon Music.</p></div>
+        <div class="controls"><div class="seg" id="pltabs"></div><select id="plplat" aria-label="Platform"><option value="">All platforms</option><option>Spotify</option><option>Apple Music</option><option>Amazon Music</option></select></div>
+      </div>
+      <div id="plstreams"></div>
+      <div id="plchanges"></div>
+      <div class="tablewrap"><table id="pltable"></table></div>
+    </section>
+    <section class="card" id="yt-sec" data-pfview="youtube">
+      <div class="card-head"><div><h2 data-scope="Lifetime · YouTube Studio export">YouTube</h2><p>Every video earning views for Wade's music: his channel, auto-generated art tracks, Shorts and other channels.</p></div></div>
+      <div id="youtube"></div>
+    </section>
+    <section class="card" id="social" data-pfview="social">
+      <div class="card-head"><div><h2 data-scope="Own period selector">Social</h2><p>Follower growth across Instagram, TikTok, YouTube, Facebook and Spotify. Click a platform card to chart it on its own.</p></div></div>
+      <div id="socgrid"></div>
+    </section>
+  </div>
+
+  <div data-tab="audience" hidden>
+    <section class="card" id="markets-sec">
+      <div class="card-head">
+        <div><h2 id="mk-h" data-scope="range">Markets</h2><p id="mk-p">Where Wade's listeners are, how each market is trending, and how that lines up with where he plays.</p></div>
+        <div class="controls"><div class="seg" id="mktabs" role="group" aria-label="Market view"></div></div>
+      </div>
+      <div data-mkview="countries">
+        <div id="markets"></div>
+        <h3 style="margin:26px 0 4px">Territories, lifetime <span class="pill scope">Lifetime</span></h3>
+        <p class="note" style="margin:0 0 10px">All-time streams by country from Luminate.</p>
         <div class="hbars" id="terrbars"></div>
       </div>
-    </div>
-  </section>
+      <div data-mkview="us" hidden><div id="usmarkets"></div></div>
+      <div data-mkview="routing" hidden><div id="usrouting"></div></div>
+    </section>
+  </div>
 
-  <section class="card" id="yt-sec">
-    <div class="card-head"><div><h2>YouTube</h2><p>Every video earning views for Wade's music: his channel, auto-generated art tracks, Shorts and other channels.</p></div></div>
-    <div id="youtube"></div>
-  </section>
+  <div data-tab="live" hidden>
+    <section class="card" id="live">
+      <div class="card-head">
+        <div><h2 data-scope="All dates">Live</h2><p>Shows appear as bands on the streams chart, grouped by tour or run.</p></div>
+        <div class="controls"><div class="seg" id="showtabs"></div><button class="btn primary" id="addshow" hidden>Add show</button></div>
+      </div>
+      <div id="showform"></div>
+      <div id="showlist"></div>
+      <div class="status" id="showstatus"></div>
+    </section>
+  </div>
 
-  <section class="card" id="markets-sec">
-    <div class="card-head"><div><h2>Markets</h2><p>Daily streams in Wade's six biggest countries and top US cities, with shows on the timeline. Follows the date range at the top.</p></div></div>
-    <div id="markets"></div>
-    <div id="usmarkets"></div>
-  </section>
+  <div data-tab="milestones" hidden>
+    <section class="card" id="milestones">
+      <div class="card-head">
+        <div><h2 data-scope="Last 90 days by default">Charts &amp; milestones</h2><p>ARIA runs, Discovery Mode, certifications and press logged by the team, plus stream milestones worked out from the data.</p></div>
+        <button class="btn primary" id="addmile" hidden>Add milestone</button>
+      </div>
+      <div id="mileform"></div>
+      <div id="milelist"></div>
+      <div class="status" id="milestatus"></div>
+    </section>
+  </div>
 
-  <section class="card" id="releases">
-    <div class="card-head"><div><h2>Releases</h2><p>Every single, EP and album date from the master release file, with how the release opened. Album rows total the tracks first released that day.</p></div></div>
-    <div class="tablewrap"><table id="reltable"></table></div>
-  </section>
-
-  <section class="card" id="aaa-sec">
-    <div class="card-head"><div><h2>Anytime, Anywhere, Antoinette</h2><p>Campaign tracking from release day, 20 May 2026.</p></div></div>
-    <div id="aaa"></div>
-  </section>
-
-  <section class="card" id="live">
-    <div class="card-head">
-      <div><h2>Live</h2><p>Shows appear as bands on the streams chart, grouped by tour or run.</p></div>
-      <div class="controls"><div class="seg" id="showtabs"></div><button class="btn primary" id="addshow" hidden>Add show</button></div>
-    </div>
-    <div id="showform"></div>
-    <div id="showlist"></div>
-    <div class="status" id="showstatus"></div>
-  </section>
-
-  <section class="card" id="playlists">
-    <div class="card-head">
-      <div><h2>Playlists</h2><p>Which playlists drive streams, and every placement Chartmetric has tracked on Spotify, Apple Music and Amazon Music.</p></div>
-      <div class="controls"><div class="seg" id="pltabs"></div><select id="plplat" aria-label="Platform"><option value="">All platforms</option><option>Spotify</option><option>Apple Music</option><option>Amazon Music</option></select></div>
-    </div>
-    <div id="plstreams"></div>
-    <div id="plchanges"></div>
-    <div class="tablewrap"><table id="pltable"></table></div>
-  </section>
-
-  <section class="card" id="social">
-    <div class="card-head"><div><h2>Social</h2><p>Follower growth across Instagram, TikTok, YouTube, Facebook and Spotify. Click a platform card to chart it on its own.</p></div></div>
-    <div id="socgrid"></div>
-  </section>
-
-  <section class="card" id="milestones">
-    <div class="card-head">
-      <div><h2>Charts &amp; milestones</h2><p>ARIA runs, Discovery Mode, certifications and press logged by the team, plus stream milestones worked out from the data.</p></div>
-      <button class="btn primary" id="addmile" hidden>Add milestone</button>
-    </div>
-    <div id="mileform"></div>
-    <div id="milelist"></div>
-    <div class="status" id="milestatus"></div>
-  </section>
+  <div data-tab="campaigns" hidden>
+    <section class="card" id="aaa-sec">
+      <div class="card-head"><div><h2 data-scope="20 May – 18 Aug 2026">Anytime, Anywhere, Antoinette</h2><p>Campaign tracking from release day, 20 May 2026, from the AAA release tracking sheet. Future campaigns (e.g. The Aftermath) can sit alongside it here.</p></div></div>
+      <div id="aaa"></div>
+    </section>
+  </div>
 
   <footer>
     <div id="srcnote"></div>
-    <div>Streams: Luminate (Activity Over Time, worldwide, all tracks and per master; per-song territory and US market splits from each song page). Territories: Luminate Activity by Location, plus daily Activity Over Time for the US, Australia, Canada, UK, New Zealand and Sweden, US market (DMA) totals and daily streams for the top 10 US markets plus Seattle, Los Angeles and New York. Releases: Wade Forster Master Release Dates. Playlists &amp; social: Chartmetric exports. Streams by playlist: DSP playlist analytics export (1 Jan 2025 – 5 Oct 2026), plus FUGA playlist analytics for 6–12 Oct 2026. YouTube: YouTube Studio content export (top 500 videos). Apple Music lifetime song stats and daily plays per song: Apple Music for Artists (lifetime to date, pulled 14 Oct 2026; daily plays to 12 Oct). Spotify audience and per-song figures: Spotify for Artists (audience timeline to 12 Oct 2026, per-song stats as at 12 Oct 2026). AAA campaign metrics, chart positions and milestones: AAA release tracking sheet. Shows and announcements: Wade Forster Master Timeline, with AU tour support acts from The Note. Capacities and tickets sold: global ticket sales tracker (7 Oct 2026). Daily streams by DSP (14 Aug – 12 Oct 2026): Spotify for Artists per-song timelines, Apple Music for Artists, and FUGA for YouTube (incl. Content ID), Amazon Music, Pandora, Deezer and SoundCloud; FUGA playlist streams for the same days. YouTube one-sheet: YouTube Studio artist analytics, total reach, 15 Jul – 12 Oct 2026.</div>
+    <details class="sources"><summary>Sources and notes</summary><div id="srctext">Streams: Luminate (Activity Over Time, worldwide, all tracks and per master; per-song territory and US market splits from each song page). Territories: Luminate Activity by Location, plus daily Activity Over Time for the US, Australia, Canada, UK, New Zealand and Sweden, US market (DMA) totals and daily streams for the top 10 US markets plus Seattle, Los Angeles and New York. Releases: Wade Forster Master Release Dates. Playlists &amp; social: Chartmetric exports. Streams by playlist: DSP playlist analytics export (1 Jan 2025 – 5 Oct 2026), plus FUGA playlist analytics for 6–12 Oct 2026. YouTube: YouTube Studio content export (top 500 videos). Apple Music lifetime song stats and daily plays per song: Apple Music for Artists (lifetime to date, pulled 14 Oct 2026; daily plays to 12 Oct). Spotify audience and per-song figures: Spotify for Artists (audience timeline to 12 Oct 2026, per-song stats as at 12 Oct 2026). AAA campaign metrics, chart positions and milestones: AAA release tracking sheet. Shows and announcements: Wade Forster Master Timeline, with AU tour support acts from The Note. Capacities and tickets sold: global ticket sales tracker (7 Oct 2026). Daily streams by DSP (14 Aug – 12 Oct 2026): Spotify for Artists per-song timelines, Apple Music for Artists, and FUGA for YouTube (incl. Content ID), Amazon Music, Pandora, Deezer and SoundCloud; FUGA playlist streams for the same days. YouTube one-sheet: YouTube Studio artist analytics, total reach, 15 Jul – 12 Oct 2026.</div></details>
   </footer>
 </div>
 
@@ -547,6 +615,7 @@ function setRange(l){ st.range = l; try { localStorage.setItem('wf-range', l); l
   renderAll(); }
 function renderRanges(){ const box = document.getElementById('ranges'); box.textContent = '';
   for (const [l] of RANGES.concat([['Custom']])) box.append(h('button', {'aria-pressed': String(st.range === l), onclick: () => setRange(l), text: l}));
+  const rs = document.getElementById('rangesel'); if (rs){ rs.textContent = ''; for (const [l] of RANGES.concat([['Custom']])) rs.append(h('option', {value: l, text: l, selected: st.range === l ? true : null})); rs.value = st.range; rs.onchange = () => setRange(rs.value); }
   const cb = document.getElementById('customrange'); cb.textContent = ''; cb.hidden = st.range !== 'Custom';
   if (st.range === 'Custom'){ const [a, b] = customDays(); const min = iso(0), max = iso(LAST);
     const fi = h('input', {type: 'date', min, max, value: iso(a), 'aria-label': 'From date'}), ti = h('input', {type: 'date', min, max, value: iso(b), 'aria-label': 'To date'});
@@ -576,7 +645,8 @@ function renderKpis(){ const R = rng(), box = document.getElementById('kpis'); b
     (() => { const T = SP.tl, n = T.ml.length - 1, m = T.ml[n], p = T.ml[Math.max(0, n - 28)]; return kpi('Monthly listeners', fmtN(m), 'Spotify, ' + fmtD(spIdx(n), {year: undefined}) + ' · avg ' + fmtN(cur / R.len) + ' catalogue streams/day', h('div', {class: 'delta ' + (m >= p ? 'up' : 'down'), text: (m >= p ? '▲ ' : '▼ ') + pct(Math.abs(m / p - 1)) + ' in 28 days'})); })(),
     kpi('Lifetime', fmtN(catC[LAST + 1]), 'Catalogue streams to ' + fmtD(LAST)),
     kpi('Top track', top[0].name, fmtN(top[1]) + ' streams · ' + pct(top[1] / Math.max(1, cur), 0) + ' of range'),
-    kpi('Editorial playlists', String(ed.length), ['Spotify', 'Apple Music', 'Amazon Music'].map(p => ed.filter(x => x.platform === p).length + ' ' + p.replace(' Music', '')).join(' · ') + ' · ' + fmtN(reach) + ' Spotify editorial reach'),
+    (() => { const u = {}; for (const p of ed) u[p.platform + '|' + p.playlist.toLowerCase()] = p.platform; const cnt = pf => Object.values(u).filter(x => x === pf).length;
+      return kpi('Editorial playlists', String(Object.keys(u).length), ['Spotify', 'Apple Music', 'Amazon Music'].map(p => cnt(p) + ' ' + p.replace(' Music', '')).join(' · ') + ' · ' + fmtN(reach) + ' Spotify reach'); })(),
     up.length ? kpi('Next show', fmtD(idx(up[0].date), {year: undefined}), [up[0].venue, up[0].city].filter(Boolean).join(', ') + ' · ' + up.length + ' upcoming')
               : kpi('Next show', '—', dbState === 'off' ? 'Open on claude.ai to load shows' : 'No upcoming shows logged'));
   box.querySelector('.kpi:nth-child(4) .v').style.fontSize = '19px'; }
@@ -680,9 +750,15 @@ function renderPlChanges(){ const box = document.getElementById('plchanges'); if
       h('td', null, h('span', {class: 'pill' + (c.type === 'add' ? ' on' : ''), text: c.type === 'add' ? 'Added' : 'Removed'})),
       h('td', {text: c.playlist}), h('td', {style: 'white-space:nowrap', text: c.platform}), h('td', {text: c.track})));
   tb.append(body); box.append(h('div', {class: 'tablewrap', style: 'margin-bottom:14px'}, tb)); }
+function groupPl(list){ const g = new Map(), out = [];   // Amazon lists one row per market: show one row per playlist + track with its markets
+  for (const p of list){ if (p.platform !== 'Amazon Music'){ out.push(p); continue; } const k = p.status + '|' + p.playlist.toLowerCase() + '|' + p.track;
+    const e = g.get(k); if (!e){ const c = Object.assign({}, p, {mk: p.country ? [p.country] : []}); g.set(k, c); out.push(c); continue; }
+    if (p.country && !e.mk.includes(p.country)) e.mk.push(p.country); if ((p.added || '') < (e.added || '9')){ e.added = p.added; e.d = p.d; } if ((p.removed || '') > (e.removed || '')) e.removed = p.removed; e.days = Math.max(e.days || 0, p.days || 0); }
+  for (const e of g.values()) e.country = e.mk.length > 1 ? e.mk.length + ' markets: ' + e.mk.join(', ') : (e.mk[0] || null);
+  return out; }
 function renderPlaylists(){ renderPlChanges(); const tabs = document.getElementById('pltabs'); tabs.textContent = '';
-  for (const [k, l] of [['current', 'Current'], ['past', 'Past']]) tabs.append(h('button', {'aria-pressed': String(st.plTab === k), onclick: () => { st.plTab = k; st.plAll = false; renderPlaylists(); }, text: l + ' (' + PL.filter(p => p.status === k && (!st.plPlat || p.platform === st.plPlat)).length + ')'}));
-  let rows = PL.filter(p => p.status === st.plTab && (!st.plPlat || p.platform === st.plPlat));
+  for (const [k, l] of [['current', 'Current'], ['past', 'Past']]) tabs.append(h('button', {'aria-pressed': String(st.plTab === k), onclick: () => { st.plTab = k; st.plAll = false; renderPlaylists(); }, text: l + ' (' + groupPl(PL.filter(p => p.status === k && (!st.plPlat || p.platform === st.plPlat))).length + ')'}));
+  let rows = groupPl(PL.filter(p => p.status === st.plTab && (!st.plPlat || p.platform === st.plPlat)));
   rows.sort((x, y) => (y.followers || 0) - (x.followers || 0) || (y.ed - x.ed) || ((y.added || '') > (x.added || '') ? 1 : -1));
   const tb = document.getElementById('pltable'); tb.textContent = '';
   const past = st.plTab === 'past';
@@ -901,7 +977,7 @@ function renderShows(){ renderAnnc(); const tabs = document.getElementById('show
   const rows = st.showTab === 'up' ? up : past;
   if (!rows.length){ box.append(h('div', {class: 'empty', text: st.showTab === 'up' ? 'No upcoming shows for this filter. Use Add show to enter tour dates.' : 'No past shows for this filter.'})); return; }
   const tb = h('table', null, h('thead', null, h('tr', null, ['Date', 'Venue', 'Tour / run', 'Billing', 'With', 'Tickets', 'Status', ''].map((l, k) => h('th', {class: k === 5 ? 'r' : '', text: l})))));
-  const body = h('tbody'); const n = st.showsAll ? rows.length : 30;
+  const body = h('tbody'); const n = st.showsAll ? rows.length : 10;
   for (const x of rows.slice(0, n)){ const d = idx(x.date);
     body.append(h('tr', null, h('td', {class: 'num', style: 'white-space:nowrap'}, fmtD(d, {weekday: 'short'})),
       h('td', null, h('span', {text: x.venue || x.city}), h('span', {class: 'sub', text: [x.city, x.region, x.country].filter(Boolean).join(', ') + (x.notes ? ' · ' + x.notes : '')})),
@@ -933,7 +1009,7 @@ function renderMiles(){ document.getElementById('addmile').hidden = !canWrite; c
   function mf(m, k){ return !k || (k === 'auto' ? m.auto : k === 'aaa' ? m.track === 'Anytime, Anywhere, Antoinette' : (!m.auto && m.kind === k)); }
   const items = all.filter(m => mf(m, st.mileF || ''));
   const tb = h('table', null, h('thead', null, h('tr', null, ['Date', 'Type', 'Milestone', ''].map(l => h('th', {text: l})))));
-  const body = h('tbody'); const n = st.mileAll ? items.length : 40;
+  const cut90 = idx(todayIso) - 90; const body = h('tbody'); const n = st.mileAll ? items.length : Math.min(items.length, Math.max(10, items.filter(m => m.day >= cut90).length));
   for (const m of items.slice(0, n)) body.append(h('tr', null, h('td', {class: 'num', style: 'white-space:nowrap', text: fmtD(m.day)}),
     h('td', null, h('span', {class: 'pill' + (m.auto ? '' : ' on'), text: m.auto ? 'From data' : m.kind})),
     h('td', null, h('span', {text: m.title}), (m.detail || m.source) ? h('span', {class: 'sub', text: [m.detail, m.source && !m.auto ? m.source : ''].filter(Boolean).join(' · ')}) : null),
@@ -996,7 +1072,8 @@ function renderSpotify(){ const box = document.getElementById('spotify'); if (!b
     h('td', {class: 'r', text: x.sh != null ? pct(x.sh, 0) : '—'})));
   tb.append(body);
   if (rows.length > N) tb.append(h('caption', {style: 'caption-side:bottom;text-align:left;padding-top:8px'}, h('button', {class: 'btn', onclick: () => { st.spAll = true; renderSpotify(); }, text: 'Show all ' + rows.length + ' songs'})));
-  box.append(h('h3', {style: 'margin:22px 0 4px', text: 'Songs on Spotify'}), h('p', {class: 'note', style: 'margin:0 0 8px', text: 'Save rate is saves divided by listeners over the last 12 months; the meter is scaled to 20%. Spotify share compares all-time Spotify streams with Luminate\'s all-DSP total for the same master.'}), h('div', {class: 'tablewrap'}, tb));
+  const sbox = document.getElementById('spsongs') || box; if (sbox !== box) sbox.textContent = '';
+  sbox.append(h('h3', {style: 'margin:0 0 4px', text: 'Songs on Spotify'}), h('p', {class: 'note', style: 'margin:0 0 8px', text: 'Save rate is saves divided by listeners over the last 12 months; the meter is scaled to 20%. Spotify share compares all-time Spotify streams with Luminate\'s all-DSP total for the same master.'}), h('div', {class: 'tablewrap'}, tb));
   renderSpChart(); }
 function renderSpChart(){ const el = document.getElementById('spchart'); if (!el) return; const R = rng(); const T = SP.tl;
   const a = Math.max(R.a, SP0), b = Math.min(R.b, SP0 + T.ml.length - 1); if (a >= b){ el.textContent = ''; el.append(h('div', {class: 'empty', text: 'No Spotify data in this range.'})); return; }
@@ -1016,7 +1093,7 @@ function renderPlatforms(){ const box = document.getElementById('platforms'); if
   const tile = (l, v, s2) => h('div', {class: 'soc'}, h('div', {class: 'eyebrow', text: l}), h('div', {class: 'v', text: v}), h('div', {class: 'note', text: s2}));
   const split = (sp, am, oth, tall) => { const tt = sp + am + oth || 1; return h('div', {class: 'stack', style: tall ? '' : 'height:8px;min-width:120px', role: 'img', 'aria-label': 'Spotify ' + pct(sp / tt, 0) + ', Apple Music ' + pct(am / tt, 0) + ', other ' + pct(oth / tt, 0)},
     h('i', {style: `width:${(sp / tt * 100).toFixed(2)}%;background:var(--p1)`, title: 'Spotify ' + fmtN(sp)}), h('i', {style: `width:${(am / tt * 100).toFixed(2)}%;background:var(--p2)`, title: 'Apple Music ' + fmtN(am)}), h('i', {style: `width:${(oth / tt * 100).toFixed(2)}%;background:var(--p6)`, title: 'Other ' + fmtN(oth)})); };
-  box.append(h('h3', {style: 'margin:26px 0 4px', text: 'Spotify vs Apple Music'}),
+  box.append(h('h3', {style: 'margin:0 0 4px', text: 'Spotify vs Apple Music'}),
     h('p', {class: 'note', style: 'margin:0 0 10px', text: 'All-time streams by platform against Luminate\'s all-DSP total. Apple Music lifetime figures were pulled on 14 Oct 2026.'}),
     h('div', {class: 'social', style: 'grid-template-columns:repeat(auto-fit,minmax(160px,1fr))'},
       tile('Apple Music plays', fmtN(amT), pct(amT / lumT, 0) + ' of all-DSP streams'),
@@ -1130,7 +1207,7 @@ function renderUSMarkets(){ const box = document.getElementById('usmarkets'); if
   for (const k of sorted){ const cur = rsum(USCC[k], 0, R.a, R.b), prev = R.pa != null ? rsum(USCC[k], 0, R.pa, R.pb) : null; const d = prev ? cur / prev - 1 : null;
     cards.append(h('button', {class: 'mk' + (st.usc === k ? ' on' : ''), 'aria-pressed': String(st.usc === k), onclick: () => { st.usc = k; renderUSMarkets(); }}, h('div', {class: 'eyebrow', text: usName(k)}), h('div', {class: 'v', text: fmtN(cur)}),
       h('div', {class: 'delta ' + (d == null ? '' : d >= 0 ? 'up' : 'down'), text: d == null ? 'No earlier period' : (d >= 0 ? '▲ ' : '▼ ') + pct(Math.abs(d), 0) + ' vs previous'}), h('div', {class: 'note', text: pct(cur / allCur, 1) + ' of US city streams'}))); }
-  box.append(h('h3', {style: 'margin:26px 0 4px', text: 'US cities'}), h('p', {class: 'note', style: 'margin:0 0 10px', text: 'Luminate market (DMA) data. Only streams with a known US market are counted, about 45% of US streams, so use these to compare cities rather than as totals.'}), cards);
+  box.append(h('h3', {style: 'margin:0 0 4px', text: 'US cities'}), h('p', {class: 'note', style: 'margin:0 0 10px', text: 'Luminate market (DMA) data. Only streams with a known US market are counted, about 45% of US streams, so use these to compare cities rather than as totals.'}), cards);
   const k = st.usc; const shows = SHOWS.filter(x => showMarket(x) === k);
   box.append(h('h3', {style: 'margin:18px 0 6px', text: 'Daily streams in ' + usName(k)}), h('div', {class: 'chart', id: 'uschart'}));
   drawChart(document.getElementById('uschart'), {a: R.a, b: R.b, min: 0, val: i => USM.daily[k][i] || 0, ov: Object.assign({}, st.overlays, {pl: false}), releases: RELEASES, miles: allMiles(), adds: {}, shows, height: 200, aria: 'Daily streams in ' + usName(k)});
@@ -1143,6 +1220,7 @@ function renderUSMarkets(){ const box = document.getElementById('usmarkets'); if
         h('td', {class: 'r'}, af != null && b ? h('span', {class: 'delta ' + (af >= b ? 'up' : 'down'), text: (af >= b ? '+' : '−') + pct(Math.abs(af / b - 1), 0)}) : h('span', {class: 'note', text: '—'})))); }
     tb.append(body); box.append(h('p', {class: 'note', style: 'margin:14px 0 6px', text: 'Shows in the ' + usName(k) + ' market, with average daily streams there in the two weeks either side.'}), h('div', {class: 'tablewrap'}, tb)); }
   else box.append(h('p', {class: 'note', style: 'margin-top:12px', text: dbState === 'off' ? 'Shows load when this dashboard is open on claude.ai.' : 'No logged shows in this market yet.'}));
+  const rbox = document.getElementById('usrouting') || box; if (rbox !== box) rbox.textContent = '';
   const allT = USM.markets.reduce((s2, m) => s2 + m[1], 0);
   const info = {}; for (const x of SHOWS){ const m = showMarket(x); if (!m) continue; const i = info[m] = info[m] || {played: 0, sold: 0, last: null, next: null, nextTbc: false};
     if (x.date < todayIso){ i.played++; i.sold += +x.sold || 0; if (!i.last || x.date > i.last) i.last = x.date; } else if (!i.next || x.date < i.next){ i.next = x.date; i.nextTbc = x.status === 'TBC'; } }
@@ -1156,7 +1234,7 @@ function renderUSMarkets(){ const box = document.getElementById('usmarkets'); if
     h('td', {class: 'r', text: x.played ? String(x.played) : '—'}), h('td', {class: 'r', text: x.sold ? fmtF(x.sold) : '—'}), h('td', {class: 'num', style: 'white-space:nowrap', text: x.last ? fmtD(idx(x.last)) : '—'}),
     h('td', {style: 'white-space:nowrap'}, x.next ? [h('span', {class: 'num', text: fmtD(idx(x.next)) + ' '}), x.nextTbc ? h('span', {class: 'pill', style: 'background:transparent;border:1px dashed var(--line)', text: 'TBC'}) : null] : (!x.played && x.r <= 60 ? h('span', {class: 'pill on', text: 'Gap'}) : h('span', {class: 'note', text: '—'})))));
   tb.append(body); if (rows.length > N) tb.append(h('caption', {style: 'caption-side:bottom;text-align:left;padding-top:8px'}, h('button', {class: 'btn', onclick: () => { st.usAll = true; renderUSMarkets(); }, text: 'Show all ' + rows.length})));
-  box.append(h('h3', {style: 'margin:24px 0 4px', text: 'Where the listeners are vs where he\'s played'}), h('p', {class: 'note', style: 'margin:0', text: 'All ' + USM.markets.length + ' US markets by lifetime streams, matched to logged shows. Nearby towns count in their market, e.g. Gruene and Helotes in San Antonio. "Gap" marks top-60 markets with no show played or booked.'}), chips, h('div', {class: 'tablewrap'}, tb));
+  rbox.append(h('h3', {style: 'margin:0 0 4px', text: 'Where the listeners are vs where he\'s played'}), h('p', {class: 'note', style: 'margin:0', text: 'All ' + USM.markets.length + ' US markets by lifetime streams, matched to logged shows. Nearby towns count in their market, e.g. Gruene and Helotes in San Antonio. "Gap" marks top-60 markets with no show played or booked.'}), chips, h('div', {class: 'tablewrap'}, tb));
 }
 
 // ---------- AAA campaign (Nathan's release tracking sheet) ----------
@@ -1516,25 +1594,119 @@ function renderOneSheets(){ const box = document.getElementById('onesheets'); if
       btn.disabled = false; }}, h('div', {class: 'eyebrow', text: 'PDF one-sheet'}), h('div', {class: 'v', style: 'font-size:19px', text: l}), h('div', {class: 'note', text: d})))),
     h('p', {class: 'note', style: 'margin:8px 0 0', text: 'Each sheet covers the selected range, ' + fmtD(R.a) + ' – ' + fmtD(R.b) + ', using the latest data in this dashboard. Per-song DSP and playlist figures cover ' + (DS ? fmtD(DS0, {year: undefined}) + ' – ' + fmtD(DS1) : 'the last 60 days') + '.'}), status); }
 
+// ---------- this week (latest 7 days vs the 7 before) ----------
+function renderThisWeek(){ const box = document.getElementById('weekgrid'); if (!box) return; box.textContent = ''; box.className = 'weekgrid';
+  const b = LAST, a = b - 6, pb = a - 1, pa = pb - 6; const today = idx(todayIso);
+  const wk = (l, v, sub, list, d) => h('div', {class: 'wk'}, h('div', {class: 'eyebrow', text: l}), v != null ? h('div', {class: 'v', text: v}) : null, d || null, sub ? h('div', {class: 'note', text: sub}) : null,
+    list && list.length ? h('ul', null, list.map(([x, y, cls]) => h('li', null, h('span', {text: x, title: x}), h('b', {class: cls || '', text: y})))) : null);
+  const dl = (c, p) => p > 0 ? h('div', {class: 'delta ' + (c >= p ? 'up' : 'down'), text: (c >= p ? '▲ ' : '▼ ') + pct(Math.abs(c / p - 1)) + ' vs the 7 days before'}) : null;
+  const chgS = (c, p) => p > 0 ? (c >= p ? '+' : '−') + pct(Math.abs(c / p - 1), 0) : 'new';
+  const cur = rsum(catC, 0, a, b), prev = rsum(catC, 0, pa, pb); let best = a; for (let i = a; i <= b; i++) if (CAT[i] > CAT[best]) best = i;
+  box.append(wk('Streams, ' + fmtD(a, {year: undefined}) + ' – ' + fmtD(b, {year: undefined}), fmtN(cur), 'Avg ' + fmtN(cur / 7) + '/day · best day ' + fmtD(best, {weekday: 'short', year: undefined}) + ' (' + fmtN(CAT[best]) + ')', null, dl(cur, prev)));
+  const songs = TR.map(t => ({t, c: tsum(t, a, b), p: tsum(t, pa, pb)})).filter(x => x.c > 0).sort((x, y) => y.c - x.c);
+  const risers = songs.filter(x => x.c >= Math.max(5000, cur * .01) && x.p > 0).sort((x, y) => y.c / y.p - x.c / x.p);
+  box.append(wk('Top songs', null, risers.length ? 'Fastest riser: ' + risers[0].t.name + ' ' + chgS(risers[0].c, risers[0].p) : null, songs.slice(0, 4).map(x => [x.t.name, fmtN(x.c) + ' · ' + chgS(x.c, x.p), x.c >= x.p ? 'delta up' : 'delta down'])));
+  if (MK.length){ const ms = MK.map(k => ({k, c: rsum(MKC[k], 0, a, b), p: rsum(MKC[k], 0, pa, pb)})).filter(x => x.p > 0);
+    const mv = ms.slice().sort((x, y) => Math.abs(y.c / y.p - 1) * Math.sqrt(y.c) - Math.abs(x.c / x.p - 1) * Math.sqrt(x.c))[0];
+    box.append(wk('Markets', null, mv ? 'Biggest move: ' + mv.k + ' ' + chgS(mv.c, mv.p) : null, ms.sort((x, y) => y.c - x.c).slice(0, 4).map(x => [x.k, fmtN(x.c) + ' · ' + chgS(x.c, x.p), x.c >= x.p ? 'delta up' : 'delta down']))); }
+  const recentAdds = groupPl(PL.filter(p => p.ed && p.status === 'current' && p.d != null && p.d >= today - 7)).sort((x, y) => y.d - x.d);
+  const ch = (D.plChanges || []).filter(c => idx(c.date) >= today - 8); const rem = ch.filter(c => c.type === 'remove');
+  const latest = groupPl(PL.filter(p => p.ed && p.d != null)).sort((x, y) => y.d - x.d).slice(0, 3);
+  box.append(wk('Editorial playlists', '+' + recentAdds.length + ' / −' + rem.length, 'Added / removed in the last 7 days (Chartmetric)' + (recentAdds.length || rem.length ? '' : '. Most recent adds:'),
+    (recentAdds.length || rem.length ? recentAdds.slice(0, 3).map(p => [p.playlist + ' · ' + p.track, 'Added', 'delta up']).concat(rem.slice(0, 2).map(c => [c.playlist + ' · ' + c.track, 'Removed', 'delta down']))
+      : latest.map(p => [p.playlist + ' · ' + p.track, fmtD(p.d, {year: undefined})]))));
+  if (typeof SOC !== 'undefined' && SOC.length){ const fl = SOC_FOLLOW.map(x => ({x, g: socGrowth(x, 7)})).filter(r => r.g);
+    box.append(wk('Followers, last 7 days', null, fl.length ? null : 'Weekly social readings start building from the next sweep.', fl.map(({x, g}) => [x.k, sgn(g.d) + ' (' + sgn(g.g * 100, v => v.toFixed(1)) + '%)', g.d >= 0 ? 'delta up' : 'delta down']))); }
+  const ms2 = MILES.map(m => Object.assign({day: idx(m.date)}, m)).concat(AUTO).filter(m => !isNaN(m.day) && m.day >= today - 14 && m.day <= today).sort((x, y) => y.day - x.day);
+  box.append(wk('Milestones, last 14 days', String(ms2.length), ms2.length ? null : 'Nothing logged in the last two weeks.', ms2.slice(0, 4).map(m => [m.title, fmtD(m.day, {year: undefined})])));
+  const up = SHOWS.filter(x => x.date >= todayIso && x.status !== 'Cancelled').sort((x, y) => x.date < y.date ? -1 : 1).slice(0, 4);
+  box.append(wk('Next shows', null, up.length ? null : (dbState === 'off' ? 'Shows load on claude.ai.' : 'No upcoming shows logged.'), up.map(x => [fmtD(idx(x.date), {weekday: 'short', year: undefined}) + ' · ' + (x.city || x.venue), x.sold != null && x.capacity ? fmtF(x.sold) + ' / ' + fmtF(x.capacity) : (x.status || x.billing || '')]))); }
+
+// ---------- data freshness ----------
+function renderFresh(){ const box = document.getElementById('fresh'); if (!box) return; box.textContent = ''; const today = idx(todayIso);
+  const items = [['Luminate streams', LAST], ['Spotify for Artists', SP && SP.tl ? idx(SP.tl.end || iso(SP0 + SP.tl.ml.length - 1)) : null], ['Apple Music', D.amAsOf ? idx(D.amAsOf) : null], ['FUGA DSPs', DS ? DS1 : null],
+    ['Chartmetric', typeof SOC !== 'undefined' && SOC.length ? Math.max(...SOC.filter(x => x.src === 'Chartmetric').map(x => x.pts[x.pts.length - 1][0])) : null]];
+  const tk = (document.getElementById('srctext') || {}).textContent || ''; const m = tk.match(/ticket sales tracker \(([^)]+)\)/i); if (m && !isNaN(Date.parse(m[1]))) items.push(['Ticket sales', idx(new Date(Date.parse(m[1] + ' UTC')).toISOString().slice(0, 10))]);
+  if (dbState === 'snap' && D.snapshot) items.push(['Tour dates', idx(D.snapshot.asOf)]); else if (dbState === 'ready') items.push(['Tour dates', 'live']);
+  if (AA && AA.dates) items.push(['AAA sheet (campaign closed)', aIdx[aIdx.length - 1], true]);
+  box.append(h('b', {text: 'Data as of'}), ...items.filter(x => x[1] != null && !isNaN(x[1]) || x[1] === 'live').map(([l, d, closed]) => h('span', {class: 'f' + (!closed && d !== 'live' && today - d > 21 ? ' old' : ''), title: !closed && d !== 'live' && today - d > 21 ? 'More than three weeks old' : '', text: l + ' ' + (d === 'live' ? 'live' : fmtD(d, {year: undefined}))}))); }
+
+// ---------- section scope labels ----------
+function renderScopes(){ for (const el of document.querySelectorAll('h2[data-scope]')){ const v = el.getAttribute('data-scope'); let p = el.querySelector('.pill.scope'); if (!p){ p = h('span', {class: 'pill scope'}); el.append(p); }
+  const R = rng(); const isR = v === 'range'; p.className = 'pill scope' + (isR ? ' rng' : ''); p.textContent = isR ? 'Selected range · ' + fmtD(R.a, {year: undefined}) + ' – ' + fmtD(R.b, {year: undefined}) : v; } }
+
+// ---------- songs views ----------
+const SONGVIEWS = [['range', 'In selected range', 'range', 'Streams in the selected range. Select a song to chart it.'], ['spotify', 'Spotify', 'Last 12 months · all-time', 'Spotify for Artists per-song figures: all-time and 12-month streams, listeners, saves and save rate.'], ['platforms', 'Apple & platform split', 'Lifetime', 'All-time streams by platform against Luminate\'s all-DSP total, with Apple Music listeners, Shazams, radio spins and YouTube views.']];
+st.songView = st.songView || 'range';
+function renderSongViews(){ const seg = document.getElementById('songviews'); if (!seg) return; seg.textContent = '';
+  for (const [k, l] of SONGVIEWS) seg.append(h('button', {'aria-pressed': String(st.songView === k), onclick: () => { st.songView = k; renderSongViews(); renderTab('songs'); }, text: l}));
+  for (const el of document.querySelectorAll('[data-songview]')) el.hidden = el.getAttribute('data-songview') !== st.songView;
+  const tr = document.getElementById('tracks'); if (tr){ tr.classList.toggle('wide', st.songView !== 'range'); const side = tr.children[1]; if (side) side.hidden = st.songView !== 'range'; }
+  const v = SONGVIEWS.find(x => x[0] === st.songView); document.getElementById('songs-h').setAttribute('data-scope', v[2]); document.getElementById('songs-p').textContent = v[3]; renderScopes(); }
+
+// ---------- market views ----------
+const MKVIEWS = [['countries', 'Countries', 'range', 'Daily streams in Wade\'s six biggest countries, tour runs, market share by quarter, and lifetime territories.'], ['us', 'US cities', 'range', 'Luminate US market (DMA) streams for the top cities, with shows in each market.'], ['routing', 'Routing gaps', 'Lifetime', 'All US markets by lifetime streams against where he has played or is booked.']];
+st.mkView = st.mkView || 'countries';
+function renderMkViews(){ const seg = document.getElementById('mktabs'); if (!seg) return; seg.textContent = '';
+  for (const [k, l] of MKVIEWS) seg.append(h('button', {'aria-pressed': String(st.mkView === k), onclick: () => { st.mkView = k; renderMkViews(); renderTab('audience'); }, text: l}));
+  for (const el of document.querySelectorAll('[data-mkview]')) el.hidden = el.getAttribute('data-mkview') !== st.mkView;
+  const v = MKVIEWS.find(x => x[0] === st.mkView); document.getElementById('mk-h').setAttribute('data-scope', v[2]); document.getElementById('mk-p').textContent = v[3]; renderScopes(); }
+
+// ---------- platform views ----------
+const PFVIEWS = [['spotify', 'Spotify'], ['playlists', 'Playlists'], ['youtube', 'YouTube'], ['social', 'Social']];
+st.pfView = st.pfView || 'spotify';
+function renderPfViews(){ const seg = document.getElementById('pftabs'); if (!seg) return; seg.textContent = '';
+  for (const [k, l] of PFVIEWS) seg.append(h('button', {'aria-pressed': String(st.pfView === k), onclick: () => { st.pfView = k; renderTab('platforms'); }, text: l}));
+  for (const el of document.querySelectorAll('[data-pfview]')) el.hidden = el.getAttribute('data-pfview') !== st.pfView; }
+// ---------- tabs (each tab renders when opened) ----------
+const TABS = [['overview', 'Overview'], ['songs', 'Songs & releases'], ['platforms', 'Platforms'], ['audience', 'Audience & markets'], ['live', 'Live'], ['milestones', 'Milestones'], ['campaigns', 'Campaigns']];
+let curTab = 'overview';
+const TAB_RENDER = {
+  overview: () => { renderThisWeek(); renderKpis(); renderMain(); renderOneSheets(); },
+  songs: () => { renderSongViews(); if (st.songView === 'range'){ renderTracks(); renderDetail(); renderSide(); } else if (st.songView === 'spotify') renderSpotify(); else renderPlatforms(); renderReleases(); },
+  platforms: () => { renderPfViews(); ({spotify: renderSpotify, playlists: () => { renderPlStreams(); renderPlaylists(); }, youtube: renderYouTube, social: renderSocial})[st.pfView](); },
+  audience: () => { renderMkViews(); if (st.mkView === 'countries'){ renderMarkets(); renderTerr(); } else renderUSMarkets(); },
+  live: () => { renderShows(); },
+  milestones: () => { renderMiles(); },
+  campaigns: () => { renderAAA(); },
+};
+function renderTab(t){ (TAB_RENDER[t] || (() => {}))(); renderScopes(); }
+function showTab(t, opts){ if (!TAB_RENDER[t]) t = 'overview'; curTab = t;
+  for (const el of document.querySelectorAll('[data-tab]')) el.hidden = el.getAttribute('data-tab') !== t;
+  for (const b of document.querySelectorAll('#tabs button')) b.setAttribute('aria-selected', String(b.dataset.t === t));
+  try { localStorage.setItem('wf-tab', t); } catch(e){}
+  if (!(opts && opts.keepHash)){ try { const u = new URL(location.href); u.hash = t === 'overview' ? '' : t; history.replaceState(null, '', u); } catch(e){} }
+  renderTab(t); if (!(opts && opts.noScroll)){ const bar = document.querySelector('.bar'); const y = bar ? bar.offsetTop : 0; if (scrollY > y) scrollTo({top: y, behavior: 'auto'}); } }
+function renderTabs(){ const nav = document.getElementById('tabs'); nav.textContent = '';
+  for (const [k, l] of TABS) nav.append(h('button', {role: 'tab', 'data-t': k, 'aria-selected': String(curTab === k), onclick: () => showTab(k), text: l})); }
+function goHash(){ const id = decodeURIComponent((location.hash || '').slice(1)); if (!id) return false;
+  if (TAB_RENDER[id]){ showTab(id, {keepHash: true, noScroll: true}); return true; }
+  const el = document.getElementById(id); const pane = el && el.closest('[data-tab]'); if (!pane) return false;
+  const pv = el.closest('[data-pfview]'); if (pv) st.pfView = pv.getAttribute('data-pfview');
+  showTab(pane.getAttribute('data-tab'), {keepHash: true, noScroll: true}); requestAnimationFrame(() => el.scrollIntoView({block: 'start'})); return true; }
+addEventListener('hashchange', goHash);
+
 // ---------- wiring ----------
-function renderAll(){ renderRanges(); renderKpis(); renderMain(); renderTracks(); renderDetail(); renderSide(); renderSpChart(); renderMarkets(); renderUSMarkets(); renderOneSheets(); renderSocial(); }
+function renderAll(){ renderRanges(); renderFresh(); renderTab(curTab); }
 document.getElementById('asof').append(h('div', {text: 'Streams through ' + fmtD(LAST)}), h('div', {text: TR.length + ' masters · ' + D.territories.length + ' territories'}));
 document.getElementById('tq').addEventListener('input', e => { st.q = e.target.value; renderTracks(); });
 document.getElementById('plplat').addEventListener('change', e => { st.plPlat = e.target.value; st.plAll = false; renderPlaylists(); });
-renderOverlays(); renderProjFilter(); renderAll(); renderTerr(); renderReleases(); renderPlaylists(); renderShows(); renderMiles(); renderAAA(); renderSpotify(); renderPlStreams(); renderPlatforms(); renderMarkets(); renderUSMarkets(); renderYouTube();
-let rz; new ResizeObserver(() => { clearTimeout(rz); rz = setTimeout(() => { renderMain(); renderDetail(); renderAAAcharts(); renderSpChart(); renderMarkets(); renderUSMarkets(); }, 120); }).observe(document.getElementById('mainchart'));
+renderOverlays(); renderProjFilter(); renderTabs();
+try { const t0 = localStorage.getItem('wf-tab'); if (t0 && TAB_RENDER[t0]) curTab = t0; } catch(e){}
+renderRanges(); renderFresh(); renderAnnc(); if (!goHash()) showTab(curTab, {keepHash: true, noScroll: true});
+let rz, rzW = innerWidth; addEventListener('resize', () => { if (Math.abs(innerWidth - rzW) < 30) return; rzW = innerWidth; clearTimeout(rz); rz = setTimeout(() => renderTab(curTab), 150); });
 
 (async function connect(){
-  const fallback = () => { dbState = D.snapshot ? 'snap' : 'off'; renderShows(); renderMiles(); renderKpis(); renderAAA(); };
+  const fallback = () => { dbState = D.snapshot ? 'snap' : 'off'; renderAnnc(); renderFresh(); renderTab(curTab); };
   const C = window.claude; if (!C || typeof C.use !== 'function'){ fallback(); return; }
   try { db = await C.use('db'); } catch(e){ db = null; }
   if (!db){ fallback(); return; }
   try { const u = await C.use('user'); const c = u ? await u.can('data.write') : null; canWrite = c !== false; } catch(e){ canWrite = true; }
   const done = () => { dbState = 'ready'; };
-  db.collection('shows').onSnapshot(snap => { SHOWS = snap.docs.map(d => Object.assign({id: d.id}, d.data())).filter(x => x.date); if (dbState === 'loading' || dbState === 'snap') done(); renderShows(); renderKpis(); renderMain(); renderDetail(); renderSpChart(); renderMarkets(); renderUSMarkets(); },
+  db.collection('shows').onSnapshot(snap => { SHOWS = snap.docs.map(d => Object.assign({id: d.id}, d.data())).filter(x => x.date); if (dbState === 'loading' || dbState === 'snap') done(); renderAnnc(); renderFresh(); renderTab(curTab); },
     e => { fallback(); });
-  db.collection('milestones').onSnapshot(snap => { MILES = snap.docs.map(d => Object.assign({id: d.id}, d.data())).filter(x => x.date); if (dbState === 'loading' || dbState === 'snap') done(); renderMiles(); renderMain(); renderAAA(); },
-    e => { renderMiles(); });
+  db.collection('milestones').onSnapshot(snap => { MILES = snap.docs.map(d => Object.assign({id: d.id}, d.data())).filter(x => x.date); if (dbState === 'loading' || dbState === 'snap') done(); renderFresh(); renderTab(curTab); },
+    e => { renderTab(curTab); });
 })();
 })();
 
