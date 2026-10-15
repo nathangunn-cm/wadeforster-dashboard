@@ -436,7 +436,7 @@ details.sources div{margin-top:8px}
       <div id="cobrandbox"></div>
     </section>
     <section class="card" id="social" data-pfview="social">
-      <div class="card-head"><div><h2 data-scope="Own period selector">All socials</h2><p>Follower growth across Instagram, TikTok, YouTube, Facebook and Spotify side by side. Each platform also has its own tab with posts.</p></div></div>
+      <div class="card-head"><div><h2 data-scope="range">All socials</h2><p>Follower growth across Instagram, TikTok, YouTube, Facebook and Spotify side by side. Each platform also has its own tab with posts.</p></div></div>
       <div id="socgrid"></div>
     </section>
   </div>
@@ -966,23 +966,27 @@ function socGrain(x, a, b){ const P = x.pts.filter(p => p[0] >= a && p[0] <= b);
   const gaps = P.slice(1).map((p, k) => p[0] - P[k][0]).sort((p, q) => p - q); const g = gaps[Math.floor(gaps.length / 2)];
   return P.length + ' readings, ' + (g <= 1.5 ? 'daily' : g <= 9 ? 'weekly' : 'monthly'); }
 
-function renderSocial(){ const box = document.getElementById('socgrid'); if (!box) return; box.textContent = ''; box.className = '';
+function socVal(x, day){ // value on a day: the reading itself, or a straight line between the readings either side (as Chartmetric fills its own gaps)
+  const P = x.pts; if (!P.length || day < P[0][0]) return null; for (let i = 0; i < P.length; i++){ if (P[i][0] === day) return P[i][1]; if (P[i][0] > day){ const a = P[i - 1], b = P[i]; return a[1] + (b[1] - a[1]) * (day - a[0]) / (b[0] - a[0]); } } return null; }
+function socPeriod(x){ // growth over the date range picked at the top, ending at the latest reading in it
+  const W = socWin([x]); const e = socAt(x, W.b) || x.pts[x.pts.length - 1]; let a = W.a, late = false; if (a < x.pts[0][0]){ a = x.pts[0][0]; late = true; }
+  const v0 = socVal(x, a); if (v0 == null || e[0] <= a) return null; return {d: e[1] - v0, g: v0 ? e[1] / v0 - 1 : null, from: [a, v0], to: e, late}; }
+function renderSocial(){ const box = document.getElementById('socgrid'); if (!box) return; box.textContent = ''; box.className = ''; st.socSpan = null;   // All socials always follows the date range at the top
   if (!SOC.length){ box.append(h('div', {class: 'empty', text: 'No social data yet.'})); return; }
   const cards = h('div', {class: 'social', style: 'grid-template-columns:repeat(auto-fit,minmax(170px,1fr))'});
-  for (const x of SOC){ const last = x.pts[x.pts.length - 1]; const g30 = socGrowth(x, 30), g90 = socGrowth(x, 90);
+  for (const x of SOC){ const last = x.pts[x.pts.length - 1]; const pg = socPeriod(x);
     const step = Math.max(1, Math.floor(x.pts.length / 40)); const on = st.socMetric === x.k;
     cards.append(h('button', {class: 'soc mk' + (on ? ' on' : ''), 'aria-pressed': String(on), title: 'Show ' + x.label + ' on the chart', onclick: () => { st.socMetric = on ? 'compare' : x.k; renderSocial(); }},
       h('div', {class: 'eyebrow', text: x.label}), h('div', {class: 'v', text: fmtN(last[1])}),
-      (g => g ? h('div', {class: 'delta ' + (g.d >= 0 ? 'up' : 'down'), text: sgn(g.d) + ' (' + sgn(g.g * 100, v => v.toFixed(1)) + '%) in 7 days'}) : null)(socGrowth(x, 7)),
-      g30 ? h('div', {class: 'delta ' + (g30.d >= 0 ? 'up' : 'down'), text: sgn(g30.d) + ' (' + sgn(g30.g * 100, v => v.toFixed(1)) + '%) in 30 days'}) : null,
-      g90 ? h('div', {class: 'delta ' + (g90.d >= 0 ? 'up' : 'down'), text: sgn(g90.d) + ' (' + sgn(g90.g * 100, v => v.toFixed(1)) + '%) in 90 days'}) : null,
+      pg ? h('div', {class: 'delta ' + (pg.d >= 0 ? 'up' : 'down'), text: sgn(pg.d) + (pg.g != null ? ' (' + sgn(pg.g * 100, v => v.toFixed(1)) + '%)' : '')}) : h('div', {class: 'note', text: 'No change to show in this period'}),
+      pg ? h('div', {class: 'note', text: (pg.late ? 'Since first reading, ' : '') + fmtD(pg.from[0], {year: pg.from[0] < LAST - 300 ? 'numeric' : undefined}) + ' – ' + fmtD(pg.to[0], {year: undefined})}) : null,
       spark(x.pts.filter((_, i) => i % step === 0 || i === x.pts.length - 1).map(p => p[1]), 140, 30),
       h('div', {class: 'note', text: 'As of ' + fmtD(last[0]) + ' · ' + x.src}))); }
   const segM = h('div', {class: 'seg', role: 'group', 'aria-label': 'Chart'}, [['compare', 'Compare growth %']].concat(SOC.map(x => [x.k, SOC_SHORT[x.k] || x.k])).map(([k, l]) =>
     h('button', {'aria-pressed': String(st.socMetric === k), onclick: () => { st.socMetric = k; renderSocial(); }, text: l})));
   const segS = h('div', {class: 'seg', role: 'group', 'aria-label': 'Period'}, RANGES.concat([['Custom']]).map(([l]) => h('button', {'aria-pressed': String(socSpan() === l), title: l === 'Custom' ? 'Uses the custom dates set at the top' : null, onclick: () => { st.socSpan = l; renderSocial(); }, text: l})));
   const cmp = st.socMetric === 'compare'; const sel = SOC.find(x => x.k === st.socMetric);
-  box.append(cards, h('div', {class: 'controls', style: 'margin:16px 0 6px;justify-content:space-between'}, segM, segS),
+  box.append(h('p', {class: 'note', style: 'margin:0 0 8px', text: 'Change in followers over ' + (socSpan() === 'Custom' ? socLabel() : 'the selected range (' + socLabel() + ')') + ', from the date range at the top. Click a platform to chart it.'}), cards, h('div', {class: 'controls', style: 'margin:16px 0 6px'}, segM),
     h('p', {class: 'note', style: 'margin:0 0 6px', text: cmp ? 'Growth since ' + fmtD(socWin(SOC_FOLLOW).a) + ', per platform. Hover for each platform\'s count and change; dashed lines are releases.'
       : sel.label + ' (' + sel.src + ', ' + socGrain(sel, socWin([sel]).a, socWin([sel]).b) + ' in this window). Dots are readings; hover for the count, change since the previous reading, and 30 / 90-day growth. Dashed lines are releases.'}),
     h('div', {class: 'chart', id: 'socchart'}), h('div', {class: 'tablewrap', style: 'margin-top:14px'}, socTable()), engStrip());
@@ -996,23 +1000,23 @@ function engStrip(){ if (!ENG.length) return null;
         x.pts.length > 2 ? spark(x.pts.map(p => p[1]), 140, 30) : null, h('div', {class: 'note', text: 'As of ' + fmtD(l[0])})); })),
     h('p', {class: 'note', style: 'margin:6px 0 0', text: 'Chartmetric: average likes (YouTube: engagements) per recent post as a share of followers (YouTube: views). Recorded at each weekly sweep.'})); }
 function socTable(){ const W0 = socWin(SOC), tb = h('table');
-  const FIX = [[7, '7 days'], [30, '30 days'], [90, '90 days'], [365, '12 months']].filter(f => f[1] !== socSpan());
+  const FIX = [];
   tb.append(h('thead', null, h('tr', null, ['Platform', 'Latest', socLabel(), ...FIX.map(f => f[1]), 'Avg / month', 'Best month'].map((l, k) => h('th', {class: k ? 'r' : '', text: l})))));
   const body = h('tbody'); const cell = g => g ? h('td', {class: 'r'}, h('span', {class: 'delta ' + (g.d >= 0 ? 'up' : 'down'), text: sgn(g.d)}), h('span', {class: 'sub', text: g.g != null ? sgn(g.g * 100, v => v.toFixed(1)) + '%' : ''})) : h('td', {class: 'r', text: '—'});
   for (const x of SOC){ const last = x.pts[x.pts.length - 1]; const b0 = socAt(x, W0.a);
-    const e0 = socAt(x, W0.b) || last; const gr = b0 && e0[0] > b0[0] ? {d: e0[1] - b0[1], g: b0[1] ? e0[1] / b0[1] - 1 : null} : null; const mo = socMonthly(x), best = socBest(x, last[0] - 365);
+    const gr = socPeriod(x); const mo = socMonthly(x), best = socBest(x, last[0] - 365);
     body.append(h('tr', null, h('td', null, h('i', {class: 'swatch', style: 'background:' + x.color}), x.label, h('span', {class: 'sub', text: x.src + ' · ' + socGrain(x, W0.a, W0.b)})),
       h('td', {class: 'r'}, fmtF(last[1]), h('span', {class: 'sub', text: fmtD(last[0], {year: undefined})})), cell(gr), ...FIX.map(f => cell(socGrowth(x, f[0]))),
       h('td', {class: 'r', text: mo != null ? sgn(mo) : '—'}), h('td', {class: 'r'}, best ? sgn(best.per) : '—', h('span', {class: 'sub', text: best ? fmtD(best.b, {day: undefined}) : ''})))); }
-  tb.append(body, h('caption', {style: 'caption-side:bottom;text-align:left;padding-top:8px', class: 'note', text: 'The ' + socLabel() + ' column runs from ' + fmtD(W0.a) + ' to ' + (W0.b >= Math.max(...SOC.map(x => x.pts[x.pts.length - 1][0])) ? 'each platform\'s latest reading' : fmtD(W0.b)) + ', from the nearest reading on or before the start. Chartmetric history is daily from mid-July 2026 (Facebook weekly to monthly) and monthly before that; Spotify followers are daily. Where Chartmetric has no reading for a day it fills the gap by spreading the change evenly. Avg / month is over the last 12 months; best month is the calendar month with the biggest gain.'}));
+  tb.append(body, h('caption', {style: 'caption-side:bottom;text-align:left;padding-top:8px', class: 'note', text: 'The ' + socLabel() + ' column runs from ' + fmtD(W0.a) + ' to ' + (W0.b >= Math.max(...SOC.map(x => x.pts[x.pts.length - 1][0])) ? 'each platform\'s latest reading' : fmtD(W0.b)) + '. Where there is no reading on the start day, the value is read off a straight line between the readings either side. Chartmetric history is daily from mid-July 2026 (Facebook weekly to monthly) and monthly before that; Spotify followers are daily. Where Chartmetric has no reading for a day it fills the gap by spreading the change evenly. Avg / month is over the last 12 months; best month is the calendar month with the biggest gain.'}));
   return tb; }
 
 function socChart(el, key){ if (!el) return; el.textContent = ''; const W = Math.max(300, el.clientWidth), phone = W < 560; const mk = key || st.socMetric; const cmp = mk === 'compare';
   const series = cmp ? SOC_FOLLOW : SOC.filter(x => x.k === mk); if (!series.length) return; const lastDay = Math.max(...series.map(x => x.pts[x.pts.length - 1][0]));
   const W0 = socWin(series), a = W0.a, b = W0.b;
-  const base = new Map(series.map(x => [x, (socAt(x, a) || x.pts.find(p => p[0] >= a) || x.pts[0])]));
+  const base = new Map(series.map(x => { const v = socVal(x, a); return [x, v != null ? [a, v] : (x.pts.find(p => p[0] >= a) || x.pts[0])]; }));
   const val = (x, p) => cmp ? (p[1] / base.get(x)[1] - 1) * 100 : p[1];
-  const vis = x => { const r = x.pts.filter(p => p[0] >= a && p[0] <= b); const pb = socAt(x, a); return pb && (!r.length || r[0][0] > a) ? [[a, pb[1]]].concat(r) : r; };
+  const vis = x => { const r = x.pts.filter(p => p[0] >= a && p[0] <= b); const v0 = socVal(x, a); return v0 != null && (!r.length || r[0][0] > a) ? [[a, v0]].concat(r) : r; };
   const all = series.flatMap(x => vis(x).map(p => val(x, p))); let lo = Math.min(0, ...all), hi = Math.max(...all, cmp ? 1 : 1);
   if (!cmp){ const mn = Math.min(...all), mx = Math.max(...all); const pad = Math.max((mx - mn) * .15, mx * .002, 1); lo = Math.max(0, mn - pad); hi = mx + pad; }
   const ml = 54, mr = 12, mt = 12, ph = phone ? 190 : 250, H = mt + ph + 26, pw = W - ml - mr;
