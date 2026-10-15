@@ -201,6 +201,12 @@ th{font-family:var(--f-display)!important;letter-spacing:.12em!important;font-si
 .oscard select{width:100%;min-width:0}
 .oscard .btn{align-self:flex-start;margin-top:auto}
 .osrow{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:6px;align-items:center}
+.cmpsels{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+@media (max-width:900px){.cmpsels{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.cmpsels{grid-template-columns:minmax(0,1fr)}}
+.cmpsel{display:flex;gap:6px;align-items:center;min-width:0}.cmpsel select{flex:1;min-width:0}.cmpsel .key{flex:none;width:12px;height:12px}
+.cmptable td.r .sub,.cmptable td.r .delta{display:block;font-size:11.5px}
+.cmptable th.r{white-space:normal;min-width:110px}
 .oschk{display:flex;gap:6px;align-items:center;font-size:12.5px;color:var(--ink-2);cursor:pointer}
 .qbars{display:flex;gap:4px;align-items:flex-end;min-width:520px}
 .qb{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
@@ -328,6 +334,7 @@ details.sources div{margin-top:8px}
         </div>
         <div data-songview="spotify" hidden><div id="spsongs"></div></div>
         <div data-songview="platforms" hidden><div id="platforms"></div></div>
+        <div data-songview="compare" hidden><div id="compareview"></div></div>
       </div>
       <div style="display:grid;gap:18px;align-content:start">
         <div class="card">
@@ -2058,7 +2065,105 @@ function renderScopes(){ for (const el of document.querySelectorAll('h2[data-sco
   const R = rng(); const isR = v === 'range'; p.className = 'pill scope' + (isR ? ' rng' : ''); p.textContent = isR ? 'Selected range · ' + fmtD(R.a, {year: undefined}) + ' – ' + fmtD(R.b, {year: undefined}) : v; } }
 
 // ---------- songs views ----------
-const SONGVIEWS = [['range', 'In selected range', 'range', 'Streams in the selected range. Select a song to chart it.'], ['spotify', 'Spotify', 'Last 12 months · all-time', 'Spotify for Artists per-song figures: all-time and 12-month streams, listeners, saves and save rate.'], ['platforms', 'Apple & platform split', 'Lifetime', 'All-time streams by platform against Luminate\'s all-DSP total, with Apple Music listeners, Shazams, radio spins and YouTube views.']];
+// ---------- compare releases (Songs tab) ----------
+const CMP_COL = ['var(--p1)', 'var(--p5)', 'var(--p3)', 'var(--p4)'];
+function cmpOptions(){ const proj = []; for (const r of RELEASES) if ((r.kind === 'Album' || r.kind === 'EP') && r.tracks.length && !proj.find(p => p.project === r.project)) proj.push(r);
+  return {proj: proj.slice().reverse(), songs: TR.slice().sort((p, q) => (q.r ?? q.o) - (p.r ?? p.o))}; }
+function cmpRelease(id){ // a release as one daily series from its release day (eve-of-release US streams fold into day one)
+  if (id.startsWith('p:')){ const r = RELEASES.find(x => x.project === id.slice(2) && (x.kind === 'Album' || x.kind === 'EP')); if (!r) return null;
+    return {id, name: r.label + ' (' + r.kind + ')', kind: r.kind, day: r.day, tracks: r.tracks, note: r.tracks.length + ' new tracks'}; }
+  const t = TR.find(x => x.name === id.slice(2)); if (!t) return null; const rel = RELEASES.find(r => r.tracks.includes(t) && /single/i.test(r.kind));
+  return {id, name: t.name, kind: rel ? rel.kind : (t.firstType || 'Song'), day: t.r ?? t.o, tracks: [t], t}; }
+function cmpSeries(R){ const v = i => R.tracks.reduce((s2, t) => s2 + tv(t, i), 0); const eve = R.tracks.reduce((s2, t) => s2 + (t.o === R.day - 1 ? tv(t, t.o) : 0), 0);
+  const n = LAST - R.day + 1, out = new Float64Array(Math.max(0, n)); for (let k = 0; k < n; k++) out[k] = v(R.day + k) + (k === 0 ? eve : 0); return out; }
+const CMP_BENCH = {};
+const BENCH_FROM = idx('2025-01-01');
+function cmpBench(set){ // typical Wade single: middle half and median of the singles' day-by-day streams
+  set = set || 'recent'; if (CMP_BENCH[set]) return CMP_BENCH[set]; const S0 = RELEASES.filter(r => /single/i.test(r.kind) && r.tracks.length === 1 && (set === 'all' || r.day >= BENCH_FROM)).map(r => cmpSeries({day: r.tracks[0].r ?? r.tracks[0].o, tracks: r.tracks})).filter(a => a.length >= 7);
+  const q = (arr, p) => { const s2 = arr.slice().sort((x, y) => x - y); const i = (s2.length - 1) * p, lo = Math.floor(i); return s2[lo] + (s2[Math.min(s2.length - 1, lo + 1)] - s2[lo]) * (i - lo); };
+  const daily = [], cum = []; const C = S0.map(a => { const c = new Float64Array(a.length); let s2 = 0; a.forEach((v, k) => { s2 += v; c[k] = s2; }); return c; });
+  for (let k = 0; k < 365; k++){ const D1 = S0.filter(a => a.length > k + 3).map(a => { let s2 = 0, n = 0; for (let j = Math.max(0, k - 6); j <= k; j++){ s2 += a[j]; n++; } return s2 / n; }); const D2 = C.filter(a => a.length > k).map(a => a[k]);
+    if (D1.length < 4) break; daily.push([q(D1, .25), q(D1, .5), q(D1, .75), D1.length]); cum.push([q(D2, .25), q(D2, .5), q(D2, .75), D2.length]); }
+  return CMP_BENCH[set] = {daily, cum, n: S0.length, set, label: set === 'all' ? 'all ' + S0.length + ' of Wade\'s singles' : 'Wade\'s ' + S0.length + ' singles since 2025'}; }
+st.cmp = st.cmp || null; st.cmpN = st.cmpN || 90; st.cmpMode = st.cmpMode || 'cum'; if (st.cmpBench == null) st.cmpBench = 'recent';
+function renderCompare(){ const box = document.getElementById('compareview'); if (!box) return; box.textContent = '';
+  const O = cmpOptions(); if (!st.cmp){ const pick = ['s:' + AAt, 's:Can of Worms', 's:Love Crimes', 'p:The Aftermath (Album)']; st.cmp = pick.filter(id => cmpRelease(id)); }
+  const sel = (k) => { const v = st.cmp[k] || ''; const s = h('select', {'aria-label': 'Release ' + (k + 1), onchange: e => { const L = st.cmp.slice(); L[k] = e.target.value; st.cmp = L.filter(Boolean); renderCompare(); }},
+      h('option', {value: '', text: k ? '— none —' : 'Choose a release'}), h('optgroup', {label: 'Albums & EPs'}, O.proj.map(p => h('option', {value: 'p:' + p.project, text: p.label + ' (' + p.kind + ', ' + fmtD(p.day, {day: undefined}) + ')'}))),
+      h('optgroup', {label: 'Songs, newest first'}, O.songs.map(t => h('option', {value: 's:' + t.name, text: t.name + (t.release ? ' (' + fmtD(t.r, {day: undefined, month: 'short'}) + ')' : '')}))));
+    s.value = v; return h('div', {class: 'cmpsel'}, h('i', {class: 'key', style: 'background:' + CMP_COL[k]}), s); };
+  const RS = st.cmp.map(cmpRelease).filter(Boolean); const SER = RS.map(cmpSeries); const B = cmpBench(st.cmpBench || 'recent');
+  const maxAvail = Math.max(7, ...SER.map(a => a.length)); const N = st.cmpN === 0 ? Math.min(maxAvail, 1500) : st.cmpN;
+  const segN = h('div', {class: 'seg', role: 'group', 'aria-label': 'Days from release'}, [[28, '28 days'], [90, '90 days'], [182, '6 months'], [365, '12 months'], [0, 'All']].map(([v, l]) => h('button', {'aria-pressed': String(st.cmpN === v), onclick: () => { st.cmpN = v; renderCompare(); }, text: l})));
+  const segM = h('div', {class: 'seg', role: 'group', 'aria-label': 'Chart'}, [['cum', 'Running total'], ['daily', 'Daily (7-day avg)']].map(([v, l]) => h('button', {'aria-pressed': String(st.cmpMode === v), onclick: () => { st.cmpMode = v; renderCompare(); }, text: l})));
+  const bch = h('div', {class: 'seg', role: 'group', 'aria-label': 'Benchmark'}, [['recent', 'Typical single since 2025'], ['all', 'Typical single, all'], ['', 'No benchmark']].map(([v, l]) => h('button', {'aria-pressed': String((st.cmpBench || '') === v), onclick: () => { st.cmpBench = v; renderCompare(); }, text: l})));
+  box.append(h('div', {class: 'cmpsels'}, [0, 1, 2, 3].map(sel)),
+    h('div', {class: 'controls', style: 'justify-content:space-between;margin:12px 0 6px'}, h('div', {class: 'controls'}, segM, bch), segN),
+    h('p', {class: 'note', style: 'margin:0 0 6px', text: 'Day 1 is each release\'s own release day (streams Luminate counts on the eve of release, US time, are added to day 1). Albums and EPs count only the tracks new on that day. ' + (st.cmpBench ? 'The grey band is the middle half of ' + B.label + ' at the same point after release, with the dashed line at the median. ' : '') + 'Hover the chart for each day.'}),
+    h('div', {class: 'chart', id: 'cmpchart'}), h('div', {class: 'tablewrap', style: 'margin-top:16px'}, cmpTable(RS, SER, B)));
+  requestAnimationFrame(() => cmpChart(document.getElementById('cmpchart'), RS, SER, B, N)); }
+function cmpChart(el, RS, SER, B, N){ if (!el) return; el.textContent = ''; const W = Math.max(300, el.clientWidth), phone = W < 560, cum = st.cmpMode === 'cum';
+  const val = (a, k) => { if (k >= a.length) return null; if (cum){ let s2 = 0; for (let j = 0; j <= k; j++) s2 += a[j]; return s2; } let s2 = 0, n = 0; for (let j = Math.max(0, k - 6); j <= k; j++){ s2 += a[j]; n++; } return s2 / n; };
+  const P = SER.map(a => { const out = []; let s2 = 0; for (let k = 0; k < Math.min(N, a.length); k++){ if (cum){ s2 += a[k]; out.push(s2); } else out.push(val(a, k)); } return out; });
+  const bench = st.cmpBench ? (cum ? B.cum : B.daily).slice(0, N) : [];
+  const mx = niceMax(Math.max(1, ...P.flat(), ...bench.map(b => b[2])) * 1.05);
+  const ml = 54, mr = 12, mt = 10, ph = phone ? 200 : 270, H = mt + ph + 26, pw = W - ml - mr; const X = k => ml + k / Math.max(1, N - 1) * pw, Y = v => mt + ph - v / mx * ph;
+  const svg = s('svg', {viewBox: `0 0 ${W} ${H}`, height: H, role: 'img', tabindex: 0, 'aria-label': 'Streams by day since release for ' + RS.map(r => r.name).join(', ')});
+  for (let k = 0; k <= 4; k++){ const v = mx * k / 4, yy = Y(v); svg.append(s('line', {x1: ml, x2: W - mr, y1: yy, y2: yy, stroke: k ? 'var(--grid)' : 'var(--line)'})); const t = s('text', {x: ml - 6, y: yy + 3.5, 'text-anchor': 'end'}); t.textContent = fmtN(v); svg.append(t); }
+  const step = N <= 35 ? 7 : N <= 100 ? 14 : N <= 200 ? 30 : N <= 400 ? 60 : 180; let lastX = -99;
+  for (let k = 0; k < N; k += step){ const xx = X(k); if (xx - lastX < 44) continue; lastX = xx; const t = s('text', {x: xx, y: mt + ph + 16, 'text-anchor': 'middle'}); t.textContent = 'Day ' + (k + 1); svg.append(t); }
+  if (bench.length > 1){ let d = ''; bench.forEach((b, k) => d += (k ? 'L' : 'M') + X(k).toFixed(1) + ',' + Y(b[2]).toFixed(1)); for (let k = bench.length - 1; k >= 0; k--) d += 'L' + X(k).toFixed(1) + ',' + Y(bench[k][0]).toFixed(1);
+    svg.append(s('path', {d: d + 'Z', fill: 'var(--ink)', 'fill-opacity': .07})); let m = ''; bench.forEach((b, k) => m += (k ? 'L' : 'M') + X(k).toFixed(1) + ',' + Y(b[1]).toFixed(1)); svg.append(s('path', {d: m, fill: 'none', stroke: 'var(--muted)', 'stroke-width': 1.3, 'stroke-dasharray': '4 3'})); }
+  P.forEach((arr, j) => { if (!arr.length) return; let d = ''; arr.forEach((v, k) => d += (k ? 'L' : 'M') + X(k).toFixed(1) + ',' + Y(v).toFixed(1)); svg.append(s('path', {d, fill: 'none', stroke: CMP_COL[j], 'stroke-width': 2.2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round'}));
+    const e = arr.length - 1; svg.append(s('circle', {cx: X(e), cy: Y(arr[e]), r: 3, fill: CMP_COL[j]})); });
+  const cross = s('line', {y1: mt, y2: mt + ph, stroke: 'var(--ink-2)', 'stroke-opacity': .6, visibility: 'hidden'}); svg.append(cross);
+  const dots = P.map((_, j) => { const c = s('circle', {r: 4.5, fill: 'none', stroke: CMP_COL[j], 'stroke-width': 2, visibility: 'hidden'}); svg.append(c); return c; });
+  const hit = s('rect', {x: ml, y: 0, width: pw, height: H, fill: 'transparent'}); svg.append(hit); el.append(svg);
+  el.append(h('div', {class: 'toggles', style: 'margin-top:6px'}, RS.map((r, j) => h('span', {class: 'chip', style: 'cursor:default', 'aria-pressed': 'true'}, h('i', {class: 'key', style: 'background:' + CMP_COL[j]}), r.name + ' · ' + (P[j].length ? fmtN(P[j][P[j].length - 1]) + (P[j].length < N ? ' (day ' + P[j].length + ', latest)' : '') : 'not out yet'))),
+    bench.length ? h('span', {class: 'chip', style: 'cursor:default', 'aria-pressed': 'true'}, h('i', {class: 'key', style: 'background:var(--muted)'}), 'Typical single (median)') : null));
+  const tip = h('div', {class: 'tip', hidden: true}); el.append(tip); let cur = null;
+  function show(k){ k = Math.max(0, Math.min(N - 1, k)); cur = k; const xx = X(k); cross.setAttribute('x1', xx); cross.setAttribute('x2', xx); cross.setAttribute('visibility', 'visible');
+    tip.textContent = ''; tip.append(h('div', {class: 'd', text: 'Day ' + (k + 1) + (cum ? ' · running total' : ' · daily, 7-day avg')}));
+    RS.forEach((r, j) => { const v = P[j][k]; if (v == null){ dots[j].setAttribute('visibility', 'hidden'); tip.append(h('div', {class: 'r'}, h('span', null, h('i', {class: 'key', style: 'background:' + CMP_COL[j]}), r.name), h('b', {text: '—'}))); return; }
+      dots[j].setAttribute('cx', xx); dots[j].setAttribute('cy', Y(v)); dots[j].setAttribute('visibility', 'visible');
+      tip.append(h('div', {class: 'r'}, h('span', null, h('i', {class: 'key', style: 'background:' + CMP_COL[j]}), r.name), h('b', {text: fmtN(v)}))); });
+    if (bench[k]){ const b = bench[k]; tip.append(h('div', {class: 'ev', text: 'Typical single: ' + fmtN(b[1]) + ' (middle half ' + fmtN(b[0]) + '–' + fmtN(b[2]) + ', ' + b[3] + ' singles)'})); }
+    const dt = RS.map(r => r.day + k <= LAST ? r.name.split(' (')[0] + ': ' + fmtD(r.day + k, {year: '2-digit'}) : null).filter(Boolean); if (dt.length) tip.append(h('div', {class: 'ev'}, dt.map(x => h('div', {text: x}))));
+    tip.hidden = false; const tw = tip.offsetWidth; let left = xx + 14; if (left + tw > W) left = xx - tw - 14; tip.style.left = Math.max(0, left) + 'px'; tip.style.top = (mt + 4) + 'px'; }
+  function hide(){ cross.setAttribute('visibility', 'hidden'); dots.forEach(d => d.setAttribute('visibility', 'hidden')); tip.hidden = true; cur = null; }
+  hit.addEventListener('pointermove', e => { const r = svg.getBoundingClientRect(); const px = (e.clientX - r.left) * W / r.width; show(Math.round((px - ml) / pw * (N - 1))); });
+  hit.addEventListener('pointerleave', hide); svg.addEventListener('blur', hide);
+  svg.addEventListener('keydown', e => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft'){ e.preventDefault(); show((cur == null ? 0 : cur) + (e.key === 'ArrowRight' ? 1 : -1)); } else if (e.key === 'Escape') hide(); }); }
+function cmpTable(RS, SER, B){ const tb = h('table', {class: 'cmptable'}); if (!RS.length) return tb;
+  const sumN = (a, n) => { let s2 = 0; for (let k = 0; k < Math.min(n, a.length); k++) s2 += a[k]; return s2; };
+  const cell = (a, n) => a.length >= n ? fmtN(sumN(a, n)) : a.length ? fmtN(sumN(a, n)) + ' so far' : '—';
+  const vsB = (a, n) => { if (!st.cmpBench) return null; const b = B.cum[n - 1]; if (!b || a.length < n) return null; const r = sumN(a, n) / b[1] - 1; return h('span', {class: 'sub delta ' + (r >= 0 ? 'up' : 'down'), text: (r >= 0 ? '+' : '−') + pct(Math.abs(r), 0) + ' vs typical single'}); };
+  const best = a => { let k = 0; for (let j = 1; j < a.length; j++) if (a[j] > a[k]) k = j; return k; };
+  const toM = a => { let s2 = 0; for (let k = 0; k < a.length; k++){ s2 += a[k]; if (s2 >= 1e6) return k + 1; } return null; };
+  const ed = r => groupPl(PL.filter(p => p.ed && p.d != null && r.tracks.some(t => norm(p.track) === t.key)));
+  const rows = [
+    ['Released', r => fmtD(r.day) , r => r.kind + (r.note ? ' · ' + r.note : '')],
+    ['Day one', (r, a) => a.length ? fmtN(a[0]) : '—'],
+    ['First 7 days', (r, a) => cell(a, 7), (r, a) => vsB(a, 7)],
+    ['First 28 days', (r, a) => cell(a, 28), (r, a) => vsB(a, 28)],
+    ['First 90 days', (r, a) => cell(a, 90), (r, a) => vsB(a, 90)],
+    ['Best day', (r, a) => a.length ? fmtN(a[best(a)]) : '—', (r, a) => a.length ? 'Day ' + (best(a) + 1) + ', ' + fmtD(r.day + best(a), {year: '2-digit'}) : ''],
+    ['Days to 1M streams', (r, a) => { const d = toM(a); return d ? String(d) : 'Not yet'; }],
+    ['Editorial playlists', r => String(ed(r).length), r => { const e = ed(r); const f28 = e.filter(p => p.d < r.day + 28).length; return f28 + ' in the first 28 days, ' + e.filter(p => p.status === 'current').length + ' current'; }],
+    ['ARIA Singles Chart', r => { const w = r.t ? ariaWeeks(r.t.name) : ariaWeeks(r.name.split(' (')[0]); return w.length ? '#' + Math.min(...w.map(x => x.pos)) : '—'; }, r => { const w = r.t ? ariaWeeks(r.t.name) : []; return w.length ? w.length + ' week' + (w.length > 1 ? 's' : '') + ' in the top 50' : ''; }],
+    ['Spotify save rate', r => { const sp = r.tracks.map(spSong).filter(Boolean); const l = sp.reduce((s2, x) => s2 + x.l, 0); return l ? pct(sp.reduce((s2, x) => s2 + x.sv, 0) / l, 1) : '—'; }, () => 'Saves ÷ listeners, last 12 months'],
+    ['Apple Music share', r => { const am = r.tracks.map(amSong).filter(Boolean); const life = r.tracks.reduce((s2, t) => s2 + t.lifetime, 0); return am.length && life ? pct(am.reduce((s2, x) => s2 + x.p, 0) / life, 0) : '—'; }, () => 'Lifetime plays ÷ all-DSP streams'],
+    ['Top country', r => { const t = r.t || r.tracks.slice().sort((p, q) => q.lifetime - p.lifetime)[0]; const c = t && t.geo && t.geo.c[0]; return c ? c[0] : '—'; }, r => { const t = r.t || r.tracks.slice().sort((p, q) => q.lifetime - p.lifetime)[0]; return t && t.geo ? pct(t.geo.c[0][1] / t.geo.life, 0) + ' of streams' + (r.t ? '' : ' (biggest track)') : ''; }],
+    ['Top US city', r => { const t = r.t || r.tracks.slice().sort((p, q) => q.lifetime - p.lifetime)[0]; const m = t && t.geo && t.geo.m[0]; return m ? usName(m[0]) : '—'; }],
+    ['Lifetime streams', r => fmtN(r.tracks.reduce((s2, t) => s2 + t.lifetime, 0))],
+    ['Daily average, last 7 days', (r, a) => a.length >= 7 ? fmtN(sumN(a.slice(-7), 7) / 7) : '—', (r, a) => { if (a.length < 14) return ''; const c = sumN(a.slice(-7), 7), p = sumN(a.slice(-14, -7), 7); return h('span', {class: 'sub delta ' + (c >= p ? 'up' : 'down'), text: chg(c, p) + ' on the week before'}); }],
+  ];
+  tb.append(h('thead', null, h('tr', null, h('th', {text: ''}), RS.map((r, j) => h('th', {class: 'r'}, h('i', {class: 'key', style: 'background:' + CMP_COL[j] + ';margin-right:6px'}), r.name)))));
+  const body = h('tbody'); for (const [l, f, sub] of rows) body.append(h('tr', null, h('td', {text: l}), RS.map((r, j) => { const sb = sub ? sub(r, SER[j]) : null;
+    return h('td', {class: 'r'}, h('span', {text: f(r, SER[j])}), sb ? (typeof sb === 'string' ? h('span', {class: 'sub', text: sb}) : sb) : null); })));
+  tb.append(body, h('caption', {class: 'note', style: 'caption-side:bottom;text-align:left;padding-top:8px', text: (st.cmpBench ? '"vs typical single" compares with the median of ' + B.label + ' over the same number of days. ' : '') + ' Streams are Luminate, all DSPs; "so far" means the release is not that old yet.'}));
+  return tb; }
+const SONGVIEWS = [['range', 'In selected range', 'range', 'Streams in the selected range. Select a song to chart it.'], ['spotify', 'Spotify', 'Last 12 months · all-time', 'Spotify for Artists per-song figures: all-time and 12-month streams, listeners, saves and save rate.'], ['platforms', 'Apple & platform split', 'Lifetime', 'All-time streams by platform against Luminate\'s all-DSP total, with Apple Music listeners, Shazams, radio spins and YouTube views.'], ['compare', 'Compare releases', 'Days from release', 'Up to four songs, albums or EPs lined up from their own release day, against a typical Wade single.']];
 st.songView = st.songView || 'range';
 function renderSongViews(){ const seg = document.getElementById('songviews'); if (!seg) return; seg.textContent = '';
   for (const [k, l] of SONGVIEWS) seg.append(h('button', {'aria-pressed': String(st.songView === k), onclick: () => { st.songView = k; renderSongViews(); renderTab('songs'); }, text: l}));
@@ -2085,7 +2190,7 @@ const TABS = [['overview', 'Overview'], ['songs', 'Songs & releases'], ['platfor
 let curTab = 'overview';
 const TAB_RENDER = {
   overview: () => { renderThisWeek(); renderKpis(); renderMain(); renderOneSheets(); },
-  songs: () => { renderSongViews(); if (st.songView === 'range'){ renderTracks(); renderDetail(); renderSide(); } else if (st.songView === 'spotify') renderSpotify(); else renderPlatforms(); renderReleases(); },
+  songs: () => { renderSongViews(); if (st.songView === 'range'){ renderTracks(); renderDetail(); renderSide(); } else if (st.songView === 'spotify') renderSpotify(); else if (st.songView === 'compare') renderCompare(); else renderPlatforms(); renderReleases(); },
   platforms: () => { renderPfViews(); ({spotify: renderSpotify, playlists: () => { renderPlStreams(); renderPlaylists(); }, youtube: () => { renderYouTube(); const yb = document.getElementById('ytposts'); if (yb){ yb.textContent = ''; yb.append(postsBlock('youtube')); } }, social: renderSocial, instagram: () => renderSocPage('instagram'), tiktok: () => renderSocPage('tiktok'), facebook: () => renderSocPage('facebook')})[st.pfView](); },
   audience: () => { renderMkViews(); if (st.mkView === 'countries'){ renderMarkets(); renderTerr(); } else renderUSMarkets(); },
   live: () => { renderShows(); },
