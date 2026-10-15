@@ -1802,7 +1802,7 @@ function sheetRelease(J, sel, useRange){ const [kind, key] = [sel.slice(0, 2), s
   const o7 = openWinF(tracks, relDay, 7), o28 = openWinF(tracks, relDay, 28); let pk = a; for (let i = a; i <= b; i++) if (val(i) > val(pk)) pk = i;
   const inR = sumArr(val, a, b);
   S.kpis([['Lifetime streams', fmtN(life), 'All DSPs, to ' + fmtD(LAST, {year: undefined})], [useRange ? 'Selected range' : 'Since release', fmtN(inR), fmtD(a, {year: undefined}) + ' - ' + fmtD(b, {year: undefined})],
-    ['First 7 days', fmtN(o7.tot), o7.partial ? 'Still in first week' : 'Released ' + fmtD(relDay)], ['First 28 days', fmtN(o28.tot), o28.partial ? 'Not 28 days yet' : 'Daily avg ' + fmtN(o28.tot / 28)], ['Peak day', fmtN(val(pk)), fmtD(pk)]]);
+    ['First 7 days', fmtN(o7.tot), o7.partial ? 'Still in first week' : (isP ? 'All tracks, from ' + fmtD(relDay, {year: undefined}) : 'Released ' + fmtD(relDay))], ['First 28 days', fmtN(o28.tot), o28.partial ? 'Not 28 days yet' : 'Daily avg ' + fmtN(o28.tot / 28)], ['Peak day', fmtN(val(pk)), fmtD(pk)]]);
   const g = GWIN.slice(0, 4).map(([n, l]) => { const c = sumArr(val, LAST - n + 1, LAST), p = sumArr(val, LAST - 2 * n + 1, LAST - n); const born = Math.min(...tracks.map(t => t.o)) > LAST - 2 * n + 1;
     return [l, fmtN(c), p > 0 && !born ? chg(c, p) + ' vs the ' + l + ' before' : 'Out less than ' + (2 * n) + ' days', p > 0 && !born ? c >= p : null]; });
   S.kpis(g);
