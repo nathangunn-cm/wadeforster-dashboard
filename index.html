@@ -420,15 +420,15 @@ details.sources div{margin-top:8px}
       <div id="ytposts"></div>
     </section>
     <section class="card" id="instagram" data-pfview="instagram">
-      <div class="card-head"><div><h2 data-scope="Own period selectors">Instagram</h2><p>Followers and engagement from Chartmetric, and how each post is performing, read from Wade's Instagram profile.</p></div></div>
+      <div class="card-head"><div><h2 data-scope="range">Instagram</h2><p>Followers and engagement from Chartmetric, and how each post is performing, read from Wade's Instagram profile.</p></div></div>
       <div id="instagrambox"></div>
     </section>
     <section class="card" id="tiktok" data-pfview="tiktok">
-      <div class="card-head"><div><h2 data-scope="Own period selectors">TikTok</h2><p>Followers, likes and videos using Wade's sounds from Chartmetric, and how each of his own videos is performing, read from his TikTok profile.</p></div></div>
+      <div class="card-head"><div><h2 data-scope="range">TikTok</h2><p>Followers, likes and videos using Wade's sounds from Chartmetric, and how each of his own videos is performing, read from his TikTok profile.</p></div></div>
       <div id="tiktokbox"></div>
     </section>
     <section class="card" id="facebook" data-pfview="facebook">
-      <div class="card-head"><div><h2 data-scope="Own period selector">Facebook</h2><p>Facebook followers from Chartmetric.</p></div></div>
+      <div class="card-head"><div><h2 data-scope="range">Facebook</h2><p>Facebook followers from Chartmetric.</p></div></div>
       <div id="facebookbox"></div>
     </section>
     <section class="card" id="cobrand" data-pfview="cobrand">
@@ -984,7 +984,6 @@ function renderSocial(){ const box = document.getElementById('socgrid'); if (!bo
       h('div', {class: 'note', text: 'As of ' + fmtD(last[0]) + ' · ' + x.src}))); }
   const segM = h('div', {class: 'seg', role: 'group', 'aria-label': 'Chart'}, [['compare', 'Compare growth %']].concat(SOC.map(x => [x.k, SOC_SHORT[x.k] || x.k])).map(([k, l]) =>
     h('button', {'aria-pressed': String(st.socMetric === k), onclick: () => { st.socMetric = k; renderSocial(); }, text: l})));
-  const segS = h('div', {class: 'seg', role: 'group', 'aria-label': 'Period'}, RANGES.concat([['Custom']]).map(([l]) => h('button', {'aria-pressed': String(socSpan() === l), title: l === 'Custom' ? 'Uses the custom dates set at the top' : null, onclick: () => { st.socSpan = l; renderSocial(); }, text: l})));
   const cmp = st.socMetric === 'compare'; const sel = SOC.find(x => x.k === st.socMetric);
   box.append(h('p', {class: 'note', style: 'margin:0 0 8px', text: 'Change in followers over ' + (socSpan() === 'Custom' ? socLabel() : 'the selected range (' + socLabel() + ')') + ', from the date range at the top. Click a platform to chart it.'}), cards, h('div', {class: 'controls', style: 'margin:16px 0 6px'}, segM),
     h('p', {class: 'note', style: 'margin:0 0 6px', text: cmp ? 'Growth since ' + fmtD(socWin(SOC_FOLLOW).a) + ', per platform. Hover for each platform\'s count and change; dashed lines are releases.'
@@ -1072,19 +1071,18 @@ const SOCPAGES = {
 function socCard(x, on, onclick){ const last = x.pts[x.pts.length - 1];
   return h(onclick ? 'button' : 'div', {class: 'soc' + (onclick ? ' mk' : '') + (on ? ' on' : ''), 'aria-pressed': onclick ? String(!!on) : null, onclick},
     h('div', {class: 'eyebrow', text: x.label}), h('div', {class: 'v', text: fmtN(last[1])}),
-    [[7, '7 days'], [30, '30 days'], [90, '90 days']].map(([n, l]) => { const g = socGrowth(x, n); return g ? h('div', {class: 'delta ' + (g.d >= 0 ? 'up' : 'down'), text: sgn(g.d) + ' (' + sgn(g.g * 100, v => v.toFixed(1)) + '%) in ' + l}) : null; }),
+    (pg => pg ? [h('div', {class: 'delta ' + (pg.d >= 0 ? 'up' : 'down'), text: sgn(pg.d) + (pg.g != null ? ' (' + sgn(pg.g * 100, v => v.toFixed(1)) + '%)' : '')}), h('div', {class: 'note', text: (pg.late ? 'Since first reading, ' : '') + fmtD(pg.from[0], {year: pg.from[0] < LAST - 300 ? 'numeric' : undefined}) + ' – ' + fmtD(pg.to[0], {year: undefined})})] : h('div', {class: 'note', text: 'No change to show in this period'}))(socPeriod(x)),
     h('div', {class: 'note', text: 'As of ' + fmtD(last[0]) + ' · ' + x.src})); }
-function renderSocPage(pk){ const P = SOCPAGES[pk], box = document.getElementById(pk + 'box'); if (!box) return; box.textContent = '';
+function renderSocPage(pk){ const P = SOCPAGES[pk], box = document.getElementById(pk + 'box'); if (!box) return; box.textContent = ''; st.socSpan = null;   // follows the date range at the top
   const ser = P.keys.map(k => SOC.find(x => x.k === k)).filter(Boolean); const e = ENG.find(x => x.label === P.eng);
   st.socPg = st.socPg || {}; let mkey = st.socPg[pk]; if (!ser.find(x => x.k === mkey)) mkey = ser[0] ? ser[0].k : null;
   const cards = h('div', {class: 'social', style: 'grid-template-columns:repeat(auto-fit,minmax(190px,1fr))'}, ser.map(x => socCard(x, x.k === mkey, ser.length > 1 ? () => { st.socPg[pk] = x.k; renderSocPage(pk); } : null)),
     e ? (() => { const l = e.pts[e.pts.length - 1], pv = e.pts.length > 1 ? e.pts[e.pts.length - 2] : null; return h('div', {class: 'soc'}, h('div', {class: 'eyebrow', text: 'Engagement rate'}), h('div', {class: 'v', text: l[1].toFixed(1) + '%'}),
       pv ? h('div', {class: 'delta ' + (l[1] >= pv[1] ? 'up' : 'down'), text: sgn(l[1] - pv[1], v => v.toFixed(1)) + ' pts since ' + fmtD(pv[0], {year: undefined})}) : null, h('div', {class: 'note', text: 'Chartmetric · as of ' + fmtD(l[0])})); })() : null,
     postKpi(P));
-  ap(box, P.url ? h('p', {class: 'note', style: 'margin:-4px 0 12px'}, 'Account: ', h('a', {href: P.url, target: '_blank', rel: 'noopener', text: P.handle})) : null, cards);
+  ap(box, h('p', {class: 'note', style: 'margin:-4px 0 12px'}, 'Change over the date range at the top (' + socLabel() + ').', P.url ? ' Account: ' : null, P.url ? h('a', {href: P.url, target: '_blank', rel: 'noopener', text: P.handle}) : null), cards);
   if (mkey){ const sel = ser.find(x => x.k === mkey);
-    const segS = h('div', {class: 'seg', role: 'group', 'aria-label': 'Period'}, RANGES.concat([['Custom']]).map(([l]) => h('button', {'aria-pressed': String(socSpan() === l), onclick: () => { st.socSpan = l; renderSocPage(pk); }, text: l})));
-    ap(box, h('div', {class: 'controls', style: 'margin:16px 0 6px;justify-content:space-between'}, h('h3', {style: 'margin:0', text: sel.label}), segS),
+    ap(box, h('div', {class: 'controls', style: 'margin:16px 0 6px'}, h('h3', {style: 'margin:0', text: sel.label + ', ' + (socSpan() === 'Custom' ? socLabel() : socLabel().toLowerCase())})),
       h('p', {class: 'note', style: 'margin:0 0 6px', text: sel.src + ', ' + socGrain(sel, socWin([sel]).a, socWin([sel]).b) + ' in this window. Hover for the count and change since the previous reading. Dashed lines are releases.'}),
       h('div', {class: 'chart', id: pk + 'chart'}));
     requestAnimationFrame(() => socChart(document.getElementById(pk + 'chart'), mkey)); }
@@ -1101,23 +1099,24 @@ function postRows(plat){ const P = (D.posts || {})[plat]; if (plat === 'youtube'
     : {id: r[0], day: idx(r[1]), kind: 'Video', views: r[2], likes: r[3], comments: r[4], shares: r[5], saves: r[6], cap: r[7], pin: r[8], url: 'https://www.tiktok.com/@wadeforstermusic/video/' + r[0]});
   return {asOf: P.asOf, from: P.from, rows}; }
 const PWIN = [[7, '7 days'], [30, '30 days'], [90, '90 days'], [182, '6 months'], [365, '12 months'], [0, 'All']];
-function postKpi(P){ if (!P.posts) return null; const R = postRows(P.posts); if (!R) return null; const end = idx(R.asOf), w = R.rows.filter(r => r.day > end - 30);
+function postKpi(P){ if (!P.posts) return null; const R = postRows(P.posts); if (!R) return null; const end = idx(R.asOf), RG = rng(), b = RG.b >= LAST ? end : RG.b, a0 = RG.b >= LAST && st.range !== 'Custom' && !['Since AAA', 'All time'].includes(st.range) ? end - RG.len + 1 : RG.a, w = R.rows.filter(r => r.day >= a0 && r.day <= b);
   const vids = w.filter(r => r.views != null);
-  return h('div', {class: 'soc'}, h('div', {class: 'eyebrow', text: 'Posts, last 30 days'}), h('div', {class: 'v', text: String(w.length)}),
+  return h('div', {class: 'soc'}, h('div', {class: 'eyebrow', text: 'Posts, ' + (st.range === 'Custom' ? socLabel() : st.range.toLowerCase())}), h('div', {class: 'v', text: String(w.length)}),
     vids.length ? h('div', {class: 'note', text: 'Avg ' + fmtN(vids.reduce((a2, r) => a2 + r.views, 0) / vids.length) + ' views per video'}) : null,
     h('div', {class: 'note', text: 'Avg ' + fmtN(w.reduce((a2, r) => a2 + (r.likes || 0), 0) / Math.max(1, w.length)) + ' likes per post · as at ' + fmtD(end, {year: undefined})})); }
 function postsBlock(plat){ const R = postRows(plat); const wrap = h('div', {class: 'posts', style: 'margin-top:20px'});
   if (!R || !R.rows.length){ ap(wrap, h('h3', {style: 'margin:0 0 4px', text: 'Posts'}), h('div', {class: 'empty', text: 'Post performance has not been read yet. It is added at each weekly update.'})); return wrap; }
-  st.postWin = st.postWin == null ? 30 : st.postWin; st.postSort = st.postSort || {};
-  const end = idx(R.asOf), n = st.postWin, a = n ? end - n + 1 : -1e9; const rows = R.rows.filter(r => r.day >= a && r.day <= end);
+  st.postSort = st.postSort || {};
+  // follows the date range at the top; a range ending on the latest day runs to the date the posts were read
+  const end0 = idx(R.asOf), RG = rng(), all = st.range === 'All time', n = all ? 0 : RG.len, end = RG.b >= LAST ? end0 : RG.b;
+  const a = all ? -1e9 : RG.b >= LAST && st.range !== 'Custom' && st.range !== 'Since AAA' ? end - n + 1 : RG.a; const rows = R.rows.filter(r => r.day >= a && r.day <= end);
   const hasViews = R.rows.some(r => r.views != null), hasShares = R.rows.some(r => r.shares != null);
   const metrics = [hasViews ? ['views', 'Views'] : null, R.rows.some(r => r.likes != null) ? ['likes', 'Likes'] : null, R.rows.some(r => r.comments != null) ? ['comments', 'Comments'] : null, hasShares ? ['shares', 'Shares'] : null, hasViews && R.rows.some(r => r.likes != null) ? ['eng', 'Engagement'] : null].filter(Boolean);
   let sk = st.postSort[plat]; if (!metrics.find(m => m[0] === sk)) sk = metrics[0][0];
   const eng = r => r.views ? ((r.likes || 0) + (r.comments || 0) + (r.shares || 0)) / r.views : null; const mv = (r, k) => k === 'eng' ? eng(r) : r[k];
   const sum = k => rows.reduce((a2, r) => a2 + (r[k] || 0), 0); const vids = rows.filter(r => r.views != null);
   const cover = R.from && n && a < idx(R.from) ? 'Posts are read back to ' + fmtD(idx(R.from)) + ', so this window is partial.' : R.from && !n ? 'Posts are read back to ' + fmtD(idx(R.from)) + ' (plus pinned posts).' : '';
-  const segW = h('div', {class: 'seg', role: 'group', 'aria-label': 'Posts period'}, PWIN.map(([k, l]) => h('button', {'aria-pressed': String(st.postWin === k), onclick: () => { st.postWin = k; renderTab('platforms'); }, text: l})));
-  ap(wrap, h('div', {class: 'controls', style: 'justify-content:space-between;margin-bottom:8px'}, h('h3', {style: 'margin:0', text: 'Posts' + (n ? ', last ' + PWIN.find(x => x[0] === n)[1] : ', all read')}), segW),
+  ap(wrap, h('div', {class: 'controls', style: 'justify-content:space-between;margin-bottom:8px'}, h('h3', {style: 'margin:0', text: 'Posts' + (all ? ', all read' : ', ' + (st.range === 'Custom' ? socLabel() : st.range.toLowerCase()))})),
     h('div', {class: 'stats', style: 'margin:0 0 10px'}, h('div', null, h('b', {text: String(rows.length)}), 'posts'),
       vids.length ? h('div', null, h('b', {text: fmtN(sum('views'))}), 'views') : null, vids.length ? h('div', null, h('b', {text: fmtN(sum('views') / vids.length)}), 'avg views / video') : null,
       metrics.find(m => m[0] === 'likes') ? h('div', null, h('b', {text: fmtN(sum('likes'))}), 'likes') : null, metrics.find(m => m[0] === 'comments') ? h('div', null, h('b', {text: fmtN(sum('comments'))}), 'comments') : null, hasShares ? h('div', null, h('b', {text: fmtN(sum('shares'))}), 'shares') : null));
