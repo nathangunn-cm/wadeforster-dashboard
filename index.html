@@ -196,6 +196,12 @@ th{font-family:var(--f-display)!important;letter-spacing:.12em!important;font-si
 .soc.mk{gap:2px;text-align:left}
 .soc.mk .v{font-size:20px}
 .mk:focus-visible{outline:2px solid var(--accent)}
+.osgrid{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))!important}
+.oscard{cursor:default;gap:8px}
+.oscard select{width:100%;min-width:0}
+.oscard .btn{align-self:flex-start;margin-top:auto}
+.osrow{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:6px;align-items:center}
+.oschk{display:flex;gap:6px;align-items:center;font-size:12.5px;color:var(--ink-2);cursor:pointer}
 .qbars{display:flex;gap:4px;align-items:flex-end;min-width:520px}
 .qb{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
 .qcol{width:100%;height:120px;display:flex;flex-direction:column;gap:1px;border-radius:2px;overflow:hidden}
@@ -302,7 +308,7 @@ details.sources div{margin-top:8px}
       <div class="chart" id="mainchart"></div>
     </section>
     <section class="card" id="onesheets-sec">
-      <div class="card-head"><div><h2 data-scope="range">One-sheets</h2><p>Download a one-page PDF for each platform, built from the latest data here for the date range selected at the top.</p></div></div>
+      <div class="card-head"><div><h2 data-scope="range">One-sheets</h2><p>Download a branded PDF for each platform, or for a release, tour, song comparison or market, built from the latest data here.</p></div></div>
       <div id="onesheets"></div>
     </section>
   </div>
@@ -1557,7 +1563,7 @@ class Sheet {
     d.text(pT(fmtD(R.a) + ' - ' + fmtD(R.b) + ' (' + R.len + ' days)'), 198, 13, {align: 'right'});
     d.text(pT('Generated ' + fmtD(idx(todayIso)) + (note ? ' | ' + note : '')), 198, 19, {align: 'right'});
     d.text('Community Music | A&R', 198, 25, {align: 'right'}); this.y = 38; }
-  h2(t){ this.y += 2.5; this.need(10); const d = this.d; d.setTextColor(10, 10, 10); d.setFont('helvetica', 'bold'); d.setFontSize(10.5); d.text(pT(t.toUpperCase()), this.M, this.y); d.setDrawColor(200, 169, 110); d.setLineWidth(.4); d.line(this.M, this.y + 1.5, this.W - this.M, this.y + 1.5); this.y += 6; }
+  h2(t){ this.y += 2.5; this.need(26); const d = this.d; d.setTextColor(10, 10, 10); d.setFont('helvetica', 'bold'); d.setFontSize(10.5); d.text(pT(t.toUpperCase()), this.M, this.y); d.setDrawColor(200, 169, 110); d.setLineWidth(.4); d.line(this.M, this.y + 1.5, this.W - this.M, this.y + 1.5); this.y += 6; }
   note(t, x, w){ const d = this.d; d.setFont('helvetica', 'normal'); d.setFontSize(7); d.setTextColor(120, 120, 116); const L = d.splitTextToSize(pT(t), w || (this.W - 2 * this.M)); d.text(L, x || this.M, this.y); this.y += L.length * 3 + 1.5; }
   need(mm){ if (this.y + mm > 284){ this.footer(); this.d.addPage(); this.y = 14; } }
   kpis(items){ const d = this.d, n = items.length, gw = (this.W - 2 * this.M - (n - 1) * 3) / n; this.need(22);
@@ -1616,7 +1622,7 @@ class Sheet {
       y += 3.9; }
     if (!rows.length){ d.setTextColor(120, 120, 116); d.text('No data in this range.', x + 1, y); y += 3.9; }
     return y + 2; }
-  two(left, right){ this.y += 3; const half = (this.W - 2 * this.M - 6) / 2; const y0 = this.y; const y1 = left(this.M, half); this.y = y0; const y2 = right(this.M + half + 6, half); this.y = Math.max(y1, y2) + 2; }
+  two(left, right, need){ this.y += 3; if (need) this.need(need); const half = (this.W - 2 * this.M - 6) / 2; const y0 = this.y; const y1 = left(this.M, half); this.y = y0; const y2 = right(this.M + half + 6, half); this.y = Math.max(y1, y2) + 2; }
   footer(){ const d = this.d; d.setFont('helvetica', 'normal'); d.setFontSize(6.3); d.setTextColor(140, 140, 136); d.text(d.splitTextToSize(pT(this.foot || ''), 140), this.M, 289); d.text(pT(this.title + ' | page ' + d.getNumberOfPages()), 198, 291, {align: 'right'}); }
   blob(){ this.footer(); return this.d.output('blob'); } }
 const GREEN = [30, 130, 70], RED = [190, 60, 50];
@@ -1743,6 +1749,217 @@ function sheetSocials(S, R){ if (!SOC.length) return; S.need(70); S.h2('Socials 
   if (extra.length) S.note(extra.join('. ') + '.');
   S.note('Followers from Chartmetric (Instagram, TikTok, YouTube, Facebook; monthly readings before Oct 2026, weekly after) and Spotify for Artists (daily). Range uses the nearest reading on or before each end of the selected dates. Best month is the calendar month with the biggest gain in the last 12 months. Dotted lines are releases.'); }
 
+// ---------- release, tour, comparison and market one-sheets ----------
+function fullTable(S, cols, rows, title){ // full-width table that carries on over pages
+  let rest = rows.slice(), first = true;
+  do { const head = first && title ? 14 : 10; let fit = Math.floor((284 - S.y - head) / 3.9); if (fit < 3){ S.need(400); fit = Math.floor((284 - S.y - head) / 3.9); }
+    const part = rest.splice(0, fit); S.y = S.table(S.M, S.W - 2 * S.M, cols, part, first ? title : null); first = false; } while (rest.length); }
+const RGB_DSP = {sp: [25, 158, 112], am: [213, 81, 129], YT: [217, 89, 38], AMZ: [57, 135, 229], PAN: [201, 133, 0], OTH: [135, 146, 156]};
+const BAR = [214, 196, 156];
+const avg7 = f => i => { let s2 = 0, n = 0; for (let j = i - 6; j <= i; j++){ const v = f(j); if (v != null){ s2 += v; n++; } } return n ? s2 / n : null; };
+const spSong = t => ((D.s4a && D.s4a.songs) || []).find(x => norm(x.song) === t.key);
+const amSong = t => (D.am || []).find(x => norm(x.song) === t.key);
+const ytViews = t => YT ? YT.vids.filter(v => ytSong(v.t) === t).reduce((s2, v) => s2 + (v.v || 0), 0) : 0;
+const ariaWeeks = name => MILES.filter(m => m.kind === 'ARIA chart' && (m.track === name || norm(m.title || '').includes(norm(name)))).map(m => Object.assign({}, m, {day: idx(m.date), pos: m.pos ?? +((/No\.?\s*(\d+)/.exec(m.title || '') || [])[1])})).filter(m => m.pos).sort((p, q) => p.day - q.day);
+function songPosts(names){ const keys = names.map(n => n.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim()).filter(n => n.length >= 5);
+  for (const n of names){ const w = n.toLowerCase().replace(/[^a-z ]/g, '').split(' ').sort((p, q) => q.length - p.length)[0]; if (w && w.length >= 8) keys.push(w); }
+  const out = []; for (const pl of ['instagram', 'tiktok']){ const R0 = postRows(pl); if (!R0) continue;
+    for (const r of R0.rows){ const c = (r.cap || '').toLowerCase().replace(/[^a-z0-9 ]/g, ''); if (keys.some(k => c.includes(k))) out.push(Object.assign({plat: pl === 'instagram' ? 'Instagram' : 'TikTok'}, r)); } }
+  return out.sort((p, q) => (q.views || q.likes || 0) - (p.views || p.likes || 0)); }
+function postTable(S, list, n, title){ fullTable(S, [['Date', 11], ['Platform', 11], ['Post', 48], ['Views', 11, 'r'], ['Likes', 10, 'r'], ['Comments', 10, 'r']],
+  list.slice(0, n).map(r => [fmtD(r.day, {year: undefined}), r.plat + (r.kind && r.kind !== 'Video' ? ' ' + r.kind.toLowerCase() : ''), r.cap || '(no caption)', r.views != null ? fmtN(r.views) : '-', r.likes != null ? fmtN(r.likes) : '-', r.comments != null ? fmtN(r.comments) : '-']), title); }
+function plTable(S, list, title, noSong){ const rows = list.sort((p, q) => (q.status === 'current') - (p.status === 'current') || (q.followers || 0) - (p.followers || 0) || (q.d || 0) - (p.d || 0)).slice(0, 14);
+  const cols = [['Playlist', 30], ['Platform', 13], ['Market', noSong ? 30 : 18], ['Song', 22], ['Added', 11, 'r'], ['Peak', 7, 'r'], ['Status', 12]].filter(c => !(noSong && c[0] === 'Song'));
+  fullTable(S, cols, rows.map(p => [p.playlist, plPlatform(p), plMarket(p), p.track, p.d != null ? fmtD(p.d, {year: '2-digit'}) : '-', p.peak ? '#' + p.peak : '-', p.status === 'current' ? 'Current' : 'Ended ' + (p.removed ? fmtD(idx(p.removed), {year: undefined}) : '')].filter((_, k) => !(noSong && k === 3))), title); }
+function ariaBlock(S, list, title){ if (!list.length) return; const pk = Math.min(...list.map(m => m.pos)); S.h2(title);
+  const d = S.d, n = list.length, gw = Math.min(16, (S.W - 2 * S.M - (n - 1) * 1.5) / n); S.need(16);
+  list.forEach((m, k) => { const x = S.M + k * (gw + 1.5); d.setFillColor(...(m.pos === pk ? [244, 236, 219] : [245, 243, 238])); d.rect(x, S.y, gw, 13, 'F'); if (m.pos === pk){ d.setFillColor(200, 169, 110); d.rect(x, S.y, gw, .7, 'F'); }
+    d.setFont('helvetica', 'normal'); d.setFontSize(5.4); d.setTextColor(120, 120, 116); d.text(pT('Wk ' + (k + 1)), x + 1.2, S.y + 3.6); d.text(pT(fmtD(m.day, {year: undefined})), x + 1.2, S.y + 11.6);
+    d.setFont('helvetica', 'bold'); d.setFontSize(10); d.setTextColor(10, 10, 10); d.text('#' + m.pos, x + 1.2, S.y + 8.6); });
+  S.y += 16; S.note(n + ' week' + (n > 1 ? 's' : '') + ' on the ARIA Singles Chart, peaking at No. ' + pk + '. Source: ARIA Charts.'); }
+function geoTables(S, list, G, label){ // list: [[name, lifetime]] from per-song Luminate location tables; G: growth by place
+  return (x, wd) => S.table(x, wd, [[label, 26], ['Lifetime', 13, 'r'], ['Last 4 wks', 13, 'r'], ['Change', 10, 'r']], list.slice(0, 8).map(([n, v, key]) => { const g = G && sgVal(G[key || n], 1);
+    return Object.assign([usName(n.replace('Minneapolis-St, Paul', 'Minneapolis-St Paul')), fmtN(v), g ? fmtN(g.c) : '-', g ? chg(g.c, g.p) : '-'], {color: [null, null, null, g ? gCol(g.c, g.p) : null]}); })); }
+function dspTables(S, tracks){ // all-time platform figures plus the last 60 days by DSP
+  const sp = tracks.map(spSong).filter(Boolean), am = tracks.map(amSong).filter(Boolean); const sum = (L, k) => L.reduce((s2, x) => s2 + (+x[k] || 0), 0);
+  const life = tracks.reduce((s2, t) => s2 + t.lifetime, 0), yv = tracks.reduce((s2, t) => s2 + ytViews(t), 0);
+  const rows = [['All DSPs (Luminate)', fmtF(life), 'Lifetime, to ' + fmtD(LAST, {year: undefined})]];
+  if (sp.length) rows.push(['Spotify', fmtF(sum(sp, 'all')), fmtN(sum(sp, 'l')) + ' listeners, ' + fmtN(sum(sp, 'sv')) + ' saves (12 mo)']);
+  if (am.length) rows.push(['Apple Music', fmtF(sum(am, 'p')), fmtN(sum(am, 'shz')) + ' Shazams, ' + fmtN(sum(am, 'spins')) + ' radio spins']);
+  if (yv) rows.push(['YouTube views', fmtF(yv), 'Every video using the song']);
+  S.need(60); S.two((x, wd) => S.table(x, wd, [['Platform', 17], ['Streams', 14, 'r'], ['Detail', 36]], rows, 'All-time by platform'),
+    (x, wd) => { if (!DS) return S.y; const tot = DSPS.map(([k, l]) => [l, tracks.reduce((s2, t) => s2 + dsum(t, k, DS0, DS1), 0), k]).filter(r => r[1] > 0).sort((p, q) => q[1] - p[1]); const ts = tot.reduce((s2, r) => s2 + r[1], 0);
+      return S.table(x, wd, [['DSP', 22], ['Streams', 14, 'r'], ['Share', 10, 'r']], tot.map(r => [r[0], fmtF(r[1]), pct(r[1] / Math.max(1, ts), 0)]), 'Last 60 days by DSP (' + fmtD(DS0, {year: undefined}) + ' - ' + fmtD(DS1, {year: undefined}) + ')'); });
+  S.note('Spotify: Spotify for Artists (all-time streams). Apple Music: Apple Music for Artists (lifetime plays). YouTube views count every video using the song, including art tracks and other channels. The 60-day split uses Spotify for Artists, Apple Music for Artists and Community Music for YouTube Music / Content ID, Amazon Music, Pandora, Deezer and SoundCloud.'); }
+
+function sheetRelease(J, sel, useRange){ const [kind, key] = [sel.slice(0, 2), sel.slice(2)];
+  const isP = kind === 'p:'; const tracks = isP ? TR.filter(t => t.project === key) : [TR.find(t => t.name === key)]; if (!tracks.length || !tracks[0]) throw new Error('No songs found for this release');
+  const t0 = tracks[0], rel = isP ? RELEASES.find(r => r.project === key && (r.kind === 'Album' || r.kind === 'EP')) : null;
+  const relDay = isP ? (rel ? rel.day : Math.min(...tracks.map(t => t.r ?? t.o))) : (t0.r ?? t0.o); const title = isP ? projName(key) : t0.name;
+  const R0 = rng(); const a = useRange ? Math.max(R0.a, Math.min(...tracks.map(t => t.o))) : Math.max(0, Math.min(...tracks.map(t => t.o)), relDay - (isP ? 14 : 0)), b = useRange ? R0.b : LAST;
+  const R = {a, b, len: b - a + 1}; const S = new Sheet(J, title + (isP ? ' (' + (rel ? rel.kind : 'release') + ')' : '') + ' fact sheet', R, 'Release one-sheet'); S.foot = 'Sources: Luminate (streams, places); Spotify for Artists; Apple Music for Artists; Community Music (DSP split, last 60 days); YouTube Studio; Chartmetric (editorial playlists); ARIA Charts; Instagram and TikTok.';
+  const val = i => tracks.reduce((s2, t) => s2 + tv(t, i), 0); const life = tracks.reduce((s2, t) => s2 + t.lifetime, 0);
+  const o7 = openWinF(tracks, relDay, 7), o28 = openWinF(tracks, relDay, 28); let pk = a; for (let i = a; i <= b; i++) if (val(i) > val(pk)) pk = i;
+  const inR = sumArr(val, a, b);
+  S.kpis([['Lifetime streams', fmtN(life), 'All DSPs, to ' + fmtD(LAST, {year: undefined})], [useRange ? 'Selected range' : 'Since release', fmtN(inR), fmtD(a, {year: undefined}) + ' - ' + fmtD(b, {year: undefined})],
+    ['First 7 days', fmtN(o7.tot), o7.partial ? 'Still in first week' : 'Released ' + fmtD(relDay)], ['First 28 days', fmtN(o28.tot), o28.partial ? 'Not 28 days yet' : 'Daily avg ' + fmtN(o28.tot / 28)], ['Peak day', fmtN(val(pk)), fmtD(pk)]]);
+  const g = GWIN.slice(0, 4).map(([n, l]) => { const c = sumArr(val, LAST - n + 1, LAST), p = sumArr(val, LAST - 2 * n + 1, LAST - n); const born = Math.min(...tracks.map(t => t.o)) > LAST - 2 * n + 1;
+    return [l, fmtN(c), p > 0 && !born ? chg(c, p) + ' vs the ' + l + ' before' : 'Out less than ' + (2 * n) + ' days', p > 0 && !born ? c >= p : null]; });
+  S.kpis(g);
+  S.h2('Daily streams, all DSPs');
+  const ar = ariaWeeks(title).concat(isP ? tracks.flatMap(t => ariaWeeks(t.name)) : []);
+  const adds = PL.filter(p => p.ed && p.d != null && tracks.some(t => norm(p.track) === t.key) && p.d >= a && p.d <= b).sort((p, q) => (q.followers || 0) - (p.followers || 0)).slice(0, 3);
+  const marks = RELEASES.filter(r => r.day >= a && r.day <= b && (r.tracks.some(t => tracks.includes(t)) || (isP && r.project === key))).map(r => ({day: r.day, label: r.label}))
+    .concat(ar.length ? [{day: ar[0].day, label: 'ARIA #' + ar[0].pos}] : []).concat(adds.map(p => ({day: p.d, label: p.playlist})));
+  S.chart(a, b, [{label: 'Daily streams', rgb: BAR, val}], {height: 40, marks: marks.sort((p, q) => p.day - q.day), line: {label: '7-day average', val: avg7(i => i <= LAST ? val(i) : null)}});
+  S.h2('Streams by platform'); dspTables(S, tracks);
+  if (isP){ S.h2('Track by track');
+    fullTable(S, [['Song', 30], ['Released', 12, 'r'], ['Lifetime', 13, 'r'], [useRange ? 'In range' : 'Since album', 13, 'r'], ['First 7 days', 12, 'r'], ['Spotify', 12, 'r'], ['Apple', 12, 'r'], ['Last 30 d', 11, 'r'], ['vs 30 before', 11, 'r']],
+      tracks.slice().sort((p, q) => q.lifetime - p.lifetime).map(t => { const c = tsum(t, LAST - 29, LAST), p = tsum(t, LAST - 59, LAST - 30), sp = spSong(t), am = amSong(t);
+        return Object.assign([t.name, t.release ? fmtD(t.r, {year: '2-digit'}) : '-', fmtN(t.lifetime), fmtN(tsum(t, a, b)), t.r != null ? fmtN(openWin([t], t.r, 7).tot) : '-', sp ? fmtN(sp.all) : '-', am ? fmtN(am.p) : '-', fmtN(c), chg(c, p)], {color: [null, null, null, null, null, null, null, null, gCol(c, p)]}); })); }
+  if (!isP && t0.geo){ const G = sgFor(t0); S.h2('Where it is streamed');
+    S.need(60); S.two(geoTables(S, t0.geo.c, G, 'Country'), geoTables(S, t0.geo.m, G, 'US city'));
+    S.note('Lifetime Luminate streams by place.' + (G ? ' Last 4 weeks = full Luminate weeks to ' + fmtD(idx(SG.end), {year: undefined}) + ', against the 4 weeks before.' : '')); }
+  ariaBlock(S, ar, 'ARIA Singles Chart');
+  const pls = groupPl(PL.filter(p => p.ed && tracks.some(t => norm(p.track) === t.key)));
+  if (pls.length){ S.h2('Editorial playlists'); plTable(S, pls, null, !isP); S.note(pls.filter(p => p.status === 'current').length + ' current and ' + pls.filter(p => p.status !== 'current').length + ' past editorial placements on Spotify, Apple Music and Amazon Music (Chartmetric). Showing the biggest ' + Math.min(14, pls.length) + '.'); }
+  const ms = MILES.filter(m => m.kind !== 'ARIA chart' && (tracks.some(t => m.track === t.name || norm(m.title || '').includes(t.key)) || (isP && norm(m.title || '').includes(norm(title))))).map(m => ({day: idx(m.date), title: m.title, kind: m.kind}))
+    .concat(AUTO.filter(m => m.track && tracks.some(t => m.title.startsWith(t.name + ' passed')))).sort((p, q) => p.day - q.day);
+  if (ms.length){ S.h2('Milestones'); fullTable(S, [['Date', 14], ['Milestone', 70], ['Type', 16]], ms.slice(-12).map(m => [fmtD(m.day), m.title, m.kind || ''])); }
+  const posts = songPosts(isP ? [title].concat(tracks.map(t => t.name)) : [title]);
+  if (posts.length){ S.h2('Social posts about this release'); postTable(S, posts, 8, null); S.note('Instagram and TikTok posts by @wadeforstermusic whose caption names the ' + (isP ? 'release or a track' : 'song') + ', ranked by views (likes for photos). Counts as at the last read.'); }
+  return S.blob(); }
+
+function tourShows(tour){ return SHOWS.filter(x => x.tour === tour).sort((p, q) => p.date < q.date ? -1 : 1); }
+function sheetTour(J, tour, useRange){ const L = tourShows(tour); if (!L.length) throw new Error('No shows found for this tour');
+  const f = idx(L[0].date), l = idx(L[L.length - 1].date); const R0 = rng();
+  const a = useRange ? R0.a : Math.max(0, Math.min(f - 28, LAST - 56)), b = useRange ? R0.b : Math.min(LAST, l + 28); const R = {a, b, len: b - a + 1}; const future = f > LAST;
+  const S = new Sheet(J, tour, R, 'Tour one-sheet'); S.foot = 'Sources: tour dates and tickets from the Global Ticket Sales Tracker and the dashboard\'s shows list; Luminate (streams by country and US market); Chartmetric and Spotify for Artists (followers); Instagram and TikTok.';
+  const T = L.filter(x => x.sold != null && x.capacity); const sold = T.reduce((s2, x) => s2 + (+x.sold || 0), 0), cap = T.reduce((s2, x) => s2 + (+x.capacity || 0), 0);
+  const so = T.filter(x => x.status === 'Sold out' || +x.sold >= +x.capacity).length; const played = L.filter(x => x.date < todayIso).length;
+  S.kpis([['Shows', String(L.length), played + ' played, ' + (L.length - played) + ' to come'], ['Tickets sold', fmtF(sold), T.length + ' shows with ticket counts'], ['Sell-through', cap ? pct(sold / cap, 0) : '-', fmtF(cap) + ' capacity'], ['Sold out', so + ' of ' + T.length, 'At or over capacity'],
+    ['Dates', fmtD(f, {year: undefined}) + ' - ' + fmtD(l, {year: undefined}), fmtD(l).slice(-4)]]);
+  S.h2('Dates and tickets');
+  const H = D.tixHist || {}; const hd = Object.keys(H).sort(); const prevR = hd.length > 1 ? H[hd[hd.length - 2]] : null, lastR = hd.length ? H[hd[hd.length - 1]] : null;
+  fullTable(S, [['Date', 12], ['City', 22], ['Venue', 28], ['Billing', 11], ['Capacity', 10, 'r'], ['Sold', 10, 'r'], ['%', 7, 'r'], ['Last update', 11, 'r'], ['Status', 11]],
+    L.map(x => { const mv = prevR && lastR && prevR[x.id] != null && lastR[x.id] != null ? lastR[x.id] - prevR[x.id] : null;
+      return Object.assign([fmtD(idx(x.date), {year: '2-digit'}), [x.city, x.region].filter(Boolean).join(', '), x.venue || '', x.billing || '', x.capacity ? fmtF(x.capacity) : '-', x.sold != null ? fmtF(x.sold) : '-', x.sold != null && x.capacity ? pct(x.sold / x.capacity, 0) : '-', mv ? (mv > 0 ? '+' : '') + fmtF(mv) : '-', x.status || (x.date < todayIso ? 'Played' : '')], {color: [null, null, null, null, null, null, null, mv ? (mv > 0 ? GREEN : RED) : null, null]}); }));
+  if (prevR) S.note('Last update = change in tickets sold between ticket tracker readings of ' + fmtD(idx(hd[hd.length - 2]), {year: undefined}) + ' and ' + fmtD(idx(hd[hd.length - 1]), {year: undefined}) + '.');
+  // streams in each tour market: 28 days before the first show there vs from the show on
+  const mk = new Map(); for (const x of L){ const k = showMarket(x); const key = k && USCC[k] ? 'us:' + k : MK.includes(x.country) ? 'c:' + x.country : null; if (!key) continue; const e = mk.get(key) || {key, name: key.startsWith('us:') ? usName(k) : x.country === 'United States' ? 'United States (other cities)' : x.country, d: idx(x.date), n: 0}; e.n++; mk.set(key, e); }
+  const rows = [...mk.values()].map(e => { const C = e.key.startsWith('us:') ? USCC[e.key.slice(3)] : MKC[e.key.slice(2)]; const e0 = Math.min(e.d, LAST + 1); const pre = rsum(C, 0, e0 - 28, e0 - 1) / 28; const n2 = Math.min(28, LAST - e.d + 1); const post = n2 > 0 ? rsum(C, 0, e.d, e.d + n2 - 1) / n2 : null;
+    return Object.assign([e.name, String(e.n), fmtD(e.d, {year: '2-digit'}), fmtN(pre), post != null ? fmtN(post) : 'Upcoming', post != null ? chg(post, pre) : '-'], {color: [null, null, null, null, null, post != null ? gCol(post, pre) : null]}); });
+  if (rows.length){ S.h2('Streams in tour markets'); fullTable(S, [['Market', 26], ['Shows', 8, 'r'], ['First show', 13, 'r'], ['Avg/day before', 15, 'r'], ['Avg/day after', 15, 'r'], ['Change', 10, 'r']], rows);
+    S.note((future ? 'This run has not started yet, so "before" is the latest 28 days. ' : '') + 'Luminate daily streams in each market: average over the 28 days before the first show there, against the average from that show for up to 28 days. US cities are Luminate markets (DMAs); other countries are country-wide. Only markets the dashboard tracks daily are listed.'); }
+  const us = L.some(x => x.country === 'United States'), au = L.some(x => x.country === 'Australia');
+  const ser = us && USCC._ALL ? i => USM.daily._ALL[i] || 0 : au ? i => D.terrDaily.Australia[i] || 0 : i => CAT[i];
+  S.h2('Daily streams' + (us ? ', United States' : au ? ', Australia' : ', all countries') + ', with show dates');
+  S.chart(a, b, [{label: 'Daily streams', rgb: BAR, val: i => i <= LAST ? ser(i) : null}], {height: 36, line: {label: '7-day average', val: avg7(i => i <= LAST ? ser(i) : null)}, marks: L.filter(x => idx(x.date) >= a && idx(x.date) <= b).map(x => ({day: idx(x.date), label: x.city}))});
+  const m = future ? songRows((t, x, y) => tsum(t, x, y), LAST - 27, LAST, 0) : songRows((t, x, y) => tsum(t, x, y), Math.max(a, f), Math.min(b, Math.max(f, l)), 0);
+  S.need(60); S.two((x, wd) => S.table(x, wd, [['#', 4], ['Song', 30], ['Streams', 14, 'r'], ['Share', 9, 'r']], m.rows.slice(0, 8).map((r, k) => [String(k + 1), r.t.name, fmtF(r.v), pct(r.v / Math.max(1, m.total), 1)]), future ? 'Top songs, last 28 days' : 'Top songs during the tour'),
+    (x, wd) => { const fl = SOC_FOLLOW.map(sr => { const e = socAt(sr, b) || sr.pts[sr.pts.length - 1], s0 = socAt(sr, a); return s0 && e[0] > s0[0] ? [sr.k, fmtN(e[1]), (e[1] >= s0[1] ? '+' : '-') + fmtN(Math.abs(e[1] - s0[1])) + ' (' + chg(e[1], s0[1]) + ')', e[1] >= s0[1]] : null; }).filter(Boolean);
+      return S.table(x, wd, [['Platform', 16], ['Followers', 14, 'r'], ['Change', 22, 'r']], fl.map(r => Object.assign(r.slice(0, 3), {color: [null, null, r[3] ? GREEN : RED]})), 'Follower growth, ' + fmtD(a, {year: undefined}) + ' - ' + fmtD(b, {year: undefined})); });
+  const adds = groupPl(PL.filter(p => p.ed && p.d != null && p.d >= a && p.d <= b)); if (adds.length){ S.h2('Editorial playlist adds in this period'); plTable(S, adds, null); }
+  const posts = []; for (const pl of ['instagram', 'tiktok']){ const R1 = postRows(pl); if (R1) for (const r of R1.rows) if (r.day >= f - 3 && r.day <= l + 3) posts.push(Object.assign({plat: pl === 'instagram' ? 'Instagram' : 'TikTok'}, r)); }
+  if (posts.length){ S.h2('Best tour-period posts'); postTable(S, posts.sort((p, q) => (q.views || q.likes || 0) - (p.views || p.likes || 0)), 8, null); S.note('Instagram and TikTok posts from 3 days before the first show to 3 days after the last, ranked by views (likes for photos).'); }
+  return S.blob(); }
+
+function sheetCompare(J, names, n){ const tracks = names.map(k => TR.find(t => t.name === k)).filter(Boolean); if (tracks.length < 2) throw new Error('Pick two songs');
+  const st0 = t => (t.r ?? t.o) - (t.o === (t.r ?? t.o) - 1 ? 1 : 0); const R = {a: Math.min(...tracks.map(st0)), b: LAST, len: LAST - Math.min(...tracks.map(st0)) + 1};
+  const S = new Sheet(J, 'Song comparison', R, 'First ' + n + ' days of each song'); S.foot = 'Sources: Luminate (daily streams); Spotify for Artists; Apple Music for Artists; Chartmetric (editorial playlists); ARIA Charts.';
+  const RG = [[200, 169, 110], [57, 135, 229], [213, 81, 129]];
+  S.d.setFont('helvetica', 'bold'); S.d.setFontSize(12); S.d.setTextColor(10, 10, 10); S.d.text(pT(tracks.map(t => t.name).join('  vs  ')), S.M, S.y + 2); S.y += 8;
+  S.h2('Cumulative streams, day by day from release');
+  const r0 = t => t.r ?? t.o; const eve = t => t.o === r0(t) - 1 ? tv(t, t.o) : 0;
+  const avail = t => Math.min(n, LAST - r0(t) + 1); const cum = t => { const out = []; let s2 = eve(t); for (let k = 0; k < avail(t); k++){ s2 += tv(t, r0(t) + k); out.push(s2); } return out; };
+  const C = tracks.map(cum); const d = S.d, H = 46, x0 = S.M + 12, w = S.W - S.M - x0, y0 = S.y; S.need(H + 14);
+  const mx = niceMax(Math.max(1, ...C.flat()) * 1.05); const X = k => x0 + k / Math.max(1, n - 1) * w, Y = v => y0 + H - v / mx * H;
+  d.setFont('helvetica', 'normal'); d.setFontSize(6); d.setTextColor(135, 135, 131); d.setDrawColor(225, 225, 220); d.setLineWidth(.15);
+  for (let k = 0; k <= 4; k++){ const yy = Y(mx * k / 4); d.line(x0, yy, x0 + w, yy); d.text(fmtN(mx * k / 4), x0 - 1.5, yy + 1, {align: 'right'}); }
+  const step = n <= 7 ? 1 : n <= 28 ? 7 : n <= 90 ? 14 : 30; for (let k = 0; k < n; k += step) d.text('Day ' + (k + 1), X(k), y0 + H + 3.5, {align: 'center'});
+  C.forEach((arr, j) => { d.setDrawColor(...RG[j]); d.setLineWidth(.7); for (let k = 1; k < arr.length; k++) d.line(X(k - 1), Y(arr[k - 1]), X(k), Y(arr[k]));
+    if (arr.length){ d.setFillColor(...RG[j]); d.circle(X(arr.length - 1), Y(arr[arr.length - 1]), .8, 'F'); } });
+  S.y = y0 + H + 7.5; let lx = x0; d.setFontSize(6.8);
+  tracks.forEach((t, j) => { const lab = pT(t.name + ': ' + fmtN(C[j][C[j].length - 1] || 0) + ' in ' + C[j].length + ' days'); d.setFillColor(...RG[j]); d.rect(lx, S.y - 2.2, 2.6, 2.6, 'F'); d.setTextColor(60, 60, 60); d.text(lab, lx + 3.6, S.y); lx += d.getTextWidth(lab) + 10; });
+  S.y += 6;
+  const met = t => { const s0 = r0(t); const o = k => openWin([t], t.r ?? t.o, k); let pk = s0; for (let i = s0; i < Math.min(LAST + 1, s0 + n); i++) if (tv(t, i) > tv(t, pk)) pk = i;
+    const pls = PL.filter(p => p.ed && norm(p.track) === t.key && p.d != null && p.d < s0 + n); const ar = ariaWeeks(t.name); const sp = spSong(t), am = amSong(t);
+    return {o1: tv(t, s0) + eve(t), o7: o(7), o28: o(28), on: o(n), pk, pls: groupPl(pls).length, ar, sp, am, cur: tsum(t, LAST - 6, LAST) / 7, life: t.lifetime}; };
+  const M = tracks.map(met); const fmtO = o => fmtF(o.tot) + (o.partial ? ' (so far)' : '');
+  const rows = [['Released', ...tracks.map(t => fmtD(t.r ?? t.o))], ['Day one', ...M.map(m => fmtF(m.o1))], ['First 7 days', ...M.map(m => fmtO(m.o7))], ['First 28 days', ...M.map(m => fmtO(m.o28))]];
+  if (![7, 28].includes(n)) rows.push(['First ' + n + ' days', ...M.map(m => fmtO(m.on))]);
+  rows.push(['Best day in first ' + n, ...M.map((m, j) => fmtF(tv(tracks[j], m.pk)) + ' (day ' + (m.pk - r0(tracks[j]) + 1) + ')')], ['Editorial adds in first ' + n + ' days', ...M.map(m => String(m.pls))],
+    ['ARIA Singles Chart', ...M.map(m => m.ar.length ? 'Peak #' + Math.min(...m.ar.map(x => x.pos)) + ', ' + m.ar.length + ' wk' + (m.ar.length > 1 ? 's' : '') : '-')], ['Lifetime streams (all DSPs)', ...M.map(m => fmtF(m.life))],
+    ['Spotify all-time', ...M.map(m => m.sp ? fmtF(m.sp.all) : '-')], ['Apple Music plays', ...M.map(m => m.am ? fmtF(m.am.p) : '-')], ['Daily average, last 7 days', ...M.map(m => fmtF(m.cur))]);
+  S.h2('Side by side'); fullTable(S, [['', 30], ...tracks.map(t => [t.name, 30, 'r'])], rows);
+  S.note('Day one is release day; streams Luminate counts on the eve of release (US time) are added to it. "So far" means the song has not been out that long yet.');
+  return S.blob(); }
+
+const STATES = {TX: 'Texas', OK: 'Oklahoma', CO: 'Colorado', MN: 'Minnesota', IL: 'Illinois', KS: 'Kansas', MO: 'Missouri', NE: 'Nebraska', AZ: 'Arizona', GA: 'Georgia', CA: 'California', NY: 'New York', WA: 'Washington'};
+function marketList(){ const out = MK.map(k => ({id: 'c:' + k, name: k, type: 'Country'}));
+  for (const k of USC) out.push({id: 'u:' + k, name: usName(k), type: 'US city'});
+  const st = {}; for (const k of USC){ const s2 = k.slice(k.lastIndexOf(',') + 1).trim(); for (const c of s2.split('-')) (st[c] = st[c] || []).push(k); }
+  for (const [c, L] of Object.entries(st)) if (L.length > 1 && STATES[c]) out.push({id: 's:' + c, name: STATES[c] + ' (' + L.length + ' tracked cities)', type: 'US state', cities: L});
+  return out; }
+function sheetMarket(J, id){ const M0 = marketList().find(m => m.id === id); if (!M0) throw new Error('Unknown market'); const R = rng(); const S = new Sheet(J, M0.name.replace(/ \(.*/, '') + ' market one-sheet', R, M0.type);
+  S.foot = 'Sources: Luminate (daily streams by country and US market, per-song lifetime streams by place); Chartmetric (editorial playlists); tour dates and tickets from the Global Ticket Sales Tracker and the dashboard\'s shows list.';
+  const keys = M0.id.startsWith('s:') ? M0.cities : [M0.id.slice(2)]; const isC = M0.id.startsWith('c:');
+  const val = i => isC ? (D.terrDaily[keys[0]][i] || 0) : keys.reduce((s2, k) => s2 + (USM.daily[k][i] || 0), 0);
+  const cur = sumArr(val, R.a, R.b), prev = R.pa != null ? sumArr(val, R.pa, R.pb) : null; const base = isC ? rsum(catC, 0, R.a, R.b) : rsum(USCC._ALL, 0, R.a, R.b);
+  const life = isC ? ((D.territories.find(x => x.country === keys[0]) || {}).s || 0) : keys.reduce((s2, k) => s2 + ((USM.markets.find(m => m[0] === k) || [0, 0])[1]), 0);
+  let pk = R.a; for (let i = R.a; i <= R.b; i++) if (val(i) > val(pk)) pk = i;
+  const shows = SHOWS.filter(x => isC ? x.country === keys[0] : keys.includes(showMarket(x))).sort((p, q) => p.date < q.date ? -1 : 1);
+  S.kpis([['Streams in range', fmtN(cur), prev ? chg(cur, prev) + ' vs previous ' + R.len + ' days' : 'Selected range', prev ? cur >= prev : null], ['Daily average', fmtN(cur / R.len), 'Peak ' + fmtN(val(pk)) + ' on ' + fmtD(pk, {year: undefined})],
+    ['Share', pct(cur / Math.max(1, base), 1), isC ? 'of all streams worldwide' : 'of US streams with a known city'], ['Lifetime', fmtN(life), 'Luminate, since 2021'], ['Shows', String(shows.length), shows.filter(x => x.date >= todayIso).length + ' upcoming']]);
+  S.h2('Daily streams'); S.chart(R.a, R.b, [{label: 'Daily streams', rgb: BAR, val}], {height: 38, line: {label: '7-day average', val: avg7(i => i <= LAST ? val(i) : null)}, marks: (() => { const sh = shows.filter(x => idx(x.date) >= R.a && idx(x.date) <= Math.min(R.b, LAST)); return (sh.length <= 10 ? sh.map(x => ({day: idx(x.date), label: 'Show: ' + x.city})) : []).concat(relMarks(R.a, R.b)).sort((p, q) => p.day - q.day); })()});
+  if (shows.filter(x => idx(x.date) >= R.a && idx(x.date) <= Math.min(R.b, LAST)).length > 10) S.note('Show dates are left off the chart because there are more than 10 in this range; they are listed below.');
+  const songs = TR.filter(t => t.geo).map(t => { const L = isC ? t.geo.c : t.geo.m; const hits = L.filter(([n]) => keys.includes(n)); if (!hits.length) return null; const G = sgFor(t);
+    const v = hits.reduce((s2, x) => s2 + x[1], 0); let gc = 0, gp = 0, has = false; if (G) for (const k of keys){ const g = sgVal(G[k], 1); if (g){ gc += g.c; gp += g.p; has = true; } } return {t, v, g: has ? {c: gc, p: gp} : null}; }).filter(Boolean).sort((p, q) => q.v - p.v);
+  S.need(60); S.two((x, wd) => S.table(x, wd, [['#', 4], ['Song', 30], ['Lifetime', 14, 'r'], ['Last 4 wks', 13, 'r'], ['Change', 10, 'r']], songs.slice(0, 10).map((r, k) => Object.assign([String(k + 1), r.t.name, fmtN(r.v), r.g ? fmtN(r.g.c) : '-', r.g ? chg(r.g.c, r.g.p) : '-'], {color: [null, null, null, null, r.g ? gCol(r.g.c, r.g.p) : null]})), 'Top songs here'),
+    (x, wd) => { const W2 = [[7, 'Last 7 days'], [30, 'Last 30 days'], [90, 'Last 90 days'], [365, 'Last 12 months']].map(([n, l]) => { const c = sumArr(val, LAST - n + 1, LAST), p = sumArr(val, LAST - 2 * n + 1, LAST - n); return Object.assign([l, fmtF(c), chg(c, p)], {color: [null, null, gCol(c, p)]}); });
+      return S.table(x, wd, [['Period', 22], ['Streams', 16, 'r'], ['vs before', 12, 'r']], W2, 'Growth'); });
+  S.note('Top songs: lifetime Luminate streams for songs where this place is in the song\'s top 10' + (isC ? ' countries' : ' US cities') + '. Last 4 weeks covers the songs with growth by place (full Luminate weeks to ' + (SG ? fmtD(idx(SG.end), {year: undefined}) : '-') + ').');
+  if (shows.length){ S.h2('Shows' + (shows.length > 14 ? ' (latest 7 played and next 7)' : '')); fullTable(S, [['Date', 13], ['City', 20], ['Venue', 30], ['Tour / run', 30], ['Sold', 10, 'r'], ['Capacity', 10, 'r'], ['%', 7, 'r']],
+    shows.filter(x => x.date >= todayIso).slice(0, 7).concat(shows.filter(x => x.date < todayIso).slice(-7)).sort((p, q) => p.date < q.date ? -1 : 1).map(x => [fmtD(idx(x.date), {year: '2-digit'}), x.city || '', x.venue || '', x.tour || '', x.sold != null ? fmtF(x.sold) : '-', x.capacity ? fmtF(x.capacity) : '-', x.sold != null && x.capacity ? pct(x.sold / x.capacity, 0) : '-'])); }
+  if (isC){ const code = Object.keys(CC_NAME).find(c => CC_NAME[c] === keys[0]); const pls = groupPl(PL.filter(p => p.ed && p.status === 'current' && (p.country === code || p.country === keys[0] || (p.country || '').split(/,\s*/).includes(keys[0]))));
+    if (pls.length){ S.h2('Current editorial playlists in ' + keys[0]); plTable(S, pls, null); } }
+  return S.blob(); }
+
+function renderCustomSheets(box){ const R = rng(); const status = h('div', {class: 'status'});
+  const run = async (btn, label, fn) => { btn.disabled = true; status.textContent = 'Building the ' + label + '…';
+    try { const J = await loadPdf(); const blob = fn(J); const name = 'Wade Forster - ' + label.replace(/[\\/:*?"<>|]/g, '') + ' - ' + iso(idx(todayIso)) + '.pdf'; const r = await saveFile(name, blob);
+      status.textContent = r === 'saved' ? 'Downloaded ' + name + '.' : r === 'declined' ? 'Download cancelled.' : 'A download is already waiting for your answer.'; }
+    catch(err){ status.textContent = 'Couldn\'t build the PDF: ' + (err && err.message || err) + '.'; } btn.disabled = false; };
+  const songsByLife = TR.slice().sort((p, q) => q.lifetime - p.lifetime);
+  const projs = []; for (const r of RELEASES) if ((r.kind === 'Album' || r.kind === 'EP') && !projs.find(p => p.project === r.project)) projs.push(r);
+  const card = (eyebrow, title, desc, ...controls) => h('div', {class: 'mk oscard'}, h('div', {class: 'eyebrow', text: eyebrow}), h('div', {class: 'v', style: 'font-size:19px', text: title}), h('div', {class: 'note', text: desc}), ...controls);
+  const chk = (id, text) => h('label', {class: 'oschk', for: id}, h('input', {type: 'checkbox', id}), text);
+  st.os = st.os || {};
+  const relSel = h('select', {'aria-label': 'Release', onchange: e => { st.os.rel = e.target.value; }}, h('optgroup', {label: 'Albums & EPs'}, projs.slice().reverse().map(p => h('option', {value: 'p:' + p.project, text: p.label + ' (' + p.kind + ', ' + fmtD(p.day, {day: undefined}) + ')'}))),
+    h('optgroup', {label: 'Songs'}, songsByLife.map(t => h('option', {value: 's:' + t.name, text: t.name}))));
+  relSel.value = st.os.rel || 's:' + (TR.find(t => t.key === norm(AAt)) || songsByLife[0]).name;
+  const tStart = t => tourShows(t)[0].date; const tours0 = []; for (const x of SHOWS) if (x.tour && !tours0.includes(x.tour)) tours0.push(x.tour);
+  const tours = tours0.filter(t => tStart(t) <= todayIso).sort((p, q) => tStart(p) < tStart(q) ? 1 : -1).concat(tours0.filter(t => tStart(t) > todayIso).sort((p, q) => tStart(p) < tStart(q) ? -1 : 1));
+  const tourSel = h('select', {'aria-label': 'Tour', onchange: e => { st.os.tour = e.target.value; }}, tours.map(t => h('option', {value: t, text: t + ' (' + tourShows(t).length + ' shows' + (tStart(t) > todayIso ? ', upcoming' : '') + ')'}))); if (st.os.tour) tourSel.value = st.os.tour;
+  const cmpA = h('select', {'aria-label': 'First song', onchange: e => { st.os.ca = e.target.value; }}, songsByLife.map(t => h('option', {value: t.name, text: t.name})));
+  const cmpB = h('select', {'aria-label': 'Second song', onchange: e => { st.os.cb = e.target.value; }}, songsByLife.map(t => h('option', {value: t.name, text: t.name})));
+  cmpA.value = st.os.ca || AAt; cmpB.value = st.os.cb || (TR.find(t => t.name === 'Can of Worms') ? 'Can of Worms' : songsByLife[1].name);
+  const cmpN = h('select', {'aria-label': 'Days from release', onchange: e => { st.os.cn = +e.target.value; }}, [[7, 'First 7 days'], [28, 'First 28 days'], [90, 'First 90 days'], [182, 'First 6 months']].map(([v, l]) => h('option', {value: v, text: l}))); cmpN.value = st.os.cn || 28;
+  const ML = marketList(); const mkSel = h('select', {'aria-label': 'Market', onchange: e => { st.os.mk = e.target.value; }}, ['Country', 'US state', 'US city'].map(ty => h('optgroup', {label: ty === 'US city' ? 'US cities' : ty === 'US state' ? 'US states' : 'Countries'}, ML.filter(m => m.type === ty).map(m => h('option', {value: m.id, text: m.name}))))); if (st.os.mk) mkSel.value = st.os.mk;
+  const rr = chk('os-relrange', 'Use the date range at the top'), tr2 = chk('os-tourrange', 'Use the date range at the top');
+  const btn = (label, fn) => { const b = h('button', {class: 'btn primary', text: 'Download PDF'}); b.addEventListener('click', () => run(b, label(), fn)); return b; };
+  box.append(h('h3', {style: 'margin:18px 0 8px', text: 'Release, tour and market one-sheets'}),
+    h('div', {class: 'mkcards osgrid'},
+      card('Release fact sheet', 'Song or album', 'Streams per platform, first 7 / 28 days, growth, where it\'s streamed, editorial playlists, ARIA run, milestones and posts. Albums add a track-by-track table.', relSel, rr,
+        btn(() => relSel.selectedOptions[0].textContent.replace(/ \(.*/, '') + ' fact sheet', J => sheetRelease(J, relSel.value, rr.querySelector('input').checked))),
+      card('Tour one-sheet', 'Tour or run', 'Dates, tickets, sell-through and latest ticket movement, streams in each tour market before and after the show, followers, top songs, playlist adds and best posts.', tourSel, tr2,
+        btn(() => tourSel.value + ' one-sheet', J => sheetTour(J, tourSel.value, tr2.querySelector('input').checked))),
+      card('Song comparison', 'Two songs, side by side', 'Cumulative streams from release day, day one, first 7 / 28 days, best day, editorial adds, ARIA peak and current pace.', h('div', {class: 'osrow'}, cmpA, h('span', {class: 'note', text: 'vs'}), cmpB), cmpN,
+        btn(() => cmpA.value + ' vs ' + cmpB.value, J => sheetCompare(J, [cmpA.value, cmpB.value], +cmpN.value))),
+      card('Market one-sheet', 'Country, US state or city', 'Streams over the selected range with shows marked, growth, share, top songs there, shows and tickets, and current editorial playlists (countries).', mkSel,
+        btn(() => mkSel.selectedOptions[0].textContent.replace(/ \(.*/, '') + ' market one-sheet', J => sheetMarket(J, mkSel.value)))),
+    h('p', {class: 'note', style: 'margin:8px 0 0', text: 'Release sheets run from release day to ' + fmtD(LAST) + ' and tour sheets from 4 weeks before the first show to 4 weeks after the last, unless you tick the box to use the range at the top (' + fmtD(R.a, {year: undefined}) + ' – ' + fmtD(R.b) + '). Market sheets use the range at the top.' + (dbState === 'off' ? ' Tour dates load when this dashboard is open on claude.ai.' : '')}), status); }
+
 const SHEETS = [['spotify', 'Spotify', sheetSpotify, 'Streams, listeners, followers, super listeners, save rate, top songs, fastest movers and top playlists'],
   ['apple', 'Apple Music', sheetApple, 'Plays, share of all DSPs, Shazams, spins, purchases, top songs, movers, playlist streams and notable growth'],
   ['youtube', 'YouTube', sheetYouTube, 'Views, subscribers, watch time, top videos and countries from YouTube Studio'],
@@ -1755,7 +1972,8 @@ function renderOneSheets(){ const box = document.getElementById('onesheets'); if
         const r = await saveFile(name, blob); status.textContent = r === 'saved' ? 'Downloaded ' + name + '.' : r === 'declined' ? 'Download cancelled.' : 'A download is already waiting for your answer.'; }
       catch(err){ status.textContent = 'Couldn\'t build the PDF: ' + (err && err.message || err) + '.'; }
       btn.disabled = false; }}, h('div', {class: 'eyebrow', text: 'PDF one-sheet'}), h('div', {class: 'v', style: 'font-size:19px', text: l}), h('div', {class: 'note', text: d})))),
-    h('p', {class: 'note', style: 'margin:8px 0 0', text: 'Each sheet covers the selected range, ' + fmtD(R.a) + ' – ' + fmtD(R.b) + ', using the latest data in this dashboard. Per-song DSP and playlist figures cover ' + (DS ? fmtD(DS0, {year: undefined}) + ' – ' + fmtD(DS1) : 'the last 60 days') + '.'}), status); }
+    h('p', {class: 'note', style: 'margin:8px 0 0', text: 'Each sheet covers the selected range, ' + fmtD(R.a) + ' – ' + fmtD(R.b) + ', using the latest data in this dashboard. Per-song DSP and playlist figures cover ' + (DS ? fmtD(DS0, {year: undefined}) + ' – ' + fmtD(DS1) : 'the last 60 days') + '.'}), status);
+  renderCustomSheets(box); }
 
 // ---------- this week (latest 7 days vs the 7 before) ----------
 const PLAT_SHORT = {'Spotify': 'Spotify', 'Apple Music': 'Apple Music', 'Amazon Music': 'Amazon Music'};
