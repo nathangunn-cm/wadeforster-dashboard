@@ -14,7 +14,7 @@
 :root{
   --bg:#0a0a0a; --surface:#121212; --surface-2:#1c1c1c; --ink:#f0f0f0; --ink-2:#b9b9b6; --muted:#878783; --line:#2a2a2a; --grid:#1d1d1d;
   --accent:#c8a96e; --accent-ink:#0a0a0a; --accent-soft:rgba(200,169,110,.16);
-  --s-streams:#c8a96e; --s-release:#e8e4da; --s-tour:#199e70; --s-mile:#d55181; --s-play:#9085e9;
+  --s-streams:#c8a96e; --s-release:#e8e4da; --s-tour:#199e70; --s-mile:#d55181; --s-play:#9085e9; --s-paid:#e0884a; --s-creator:#5aa9e6;
   --p1:#3987e5; --p2:#d95926; --p3:#199e70; --p4:#c98500; --p5:#d55181; --p6:#87929c;
   --good:#6cc48a; --bad:#ef7a70;
   --f-display:"Oswald","ChampionGothic","Arial Narrow",Impact,sans-serif;
@@ -483,6 +483,10 @@ details.sources div{margin-top:8px}
   </div>
 
   <div data-tab="campaigns" hidden>
+    <section class="card" id="mkt-sec" hidden>
+      <div class="card-head"><div><h2>Paid marketing</h2><p>What has been spent, with whom, and what it returned: Spotify ads, creator campaigns and paid social.</p></div></div>
+      <div id="mkt"></div>
+    </section>
     <section class="card" id="aaa-sec">
       <div class="card-head"><div><h2 data-scope="20 May – 18 Aug 2026">Anytime, Anywhere, Antoinette</h2><p>Campaign tracking from release day, 20 May 2026, from the AAA release tracking sheet. Future campaigns (e.g. The Aftermath) can sit alongside it here.</p></div></div>
       <div id="aaa"></div>
@@ -592,7 +596,7 @@ const AUTO = [];
 
 // ---------- state ----------
 const RANGES = [['7 days', 7], ['30 days', 30], ['90 days', 90], ['6 months', 182], ['12 months', 365], ['Since AAA', 'aaa'], ['All time', 'all']];
-let st = {range: '12 months', overlays: {rel: true, shows: true, pl: true, mile: true}, track: null, sort: 'cur', dir: -1, proj: null, q: '', showAll: false, showTab: 'up', plTab: 'current', plPlat: '', plAll: false};
+let st = {range: '12 months', overlays: {rel: true, shows: true, pl: true, mile: true, paid: true}, track: null, sort: 'cur', dir: -1, proj: null, q: '', showAll: false, showTab: 'up', plTab: 'current', plPlat: '', plAll: false};
 const PUBLIC_URL = 'https://nathangunn-cm.github.io/wadeforster-dashboard/';
 const isoOk = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '') && !isNaN(Date.parse(s));
 st.custom = {a: iso(Math.max(0, LAST - 59)), b: iso(LAST)};
@@ -636,7 +640,7 @@ function drawChart(el, cfg){
   const v2 = cfg.val2 ? vals.map((_, k) => cfg.val2(a + k)) : null;
   const avg2 = v2 ? v2.map((_, k) => { let s2 = 0, n = 0; for (let j = Math.max(0, k - 6); j <= k; j++){ s2 += v2[j]; n++; }
     if (k < 6){ for (let j = 1; j <= 6 - k; j++){ const i = a - j; if (i >= cfg.min){ s2 += cfg.val2(i); n++; } } } return s2 / n; }) : null;
-  const lanes = []; if (cfg.ov.shows) lanes.push('shows'); if (cfg.ov.pl) lanes.push('pl');
+  const lanes = []; if (cfg.ov.shows) lanes.push('shows'); if (cfg.ov.pl) lanes.push('pl'); if (cfg.ov.paid && PM) lanes.push('paid');
   const ml = 46, mr = 10, mt = cfg.ov.rel ? 24 : 10, ph = cfg.height || (phone ? 190 : 250), laneH = 18;
   const H = mt + ph + 22 + lanes.length * laneH + 4;
   const pw = W - ml - mr; const span = Math.max(1, b - a);
@@ -681,10 +685,11 @@ function drawChart(el, cfg){
   // lanes
   let ly = mt + ph + 24;
   for (const ln of lanes){
-    const t = s('text', {x: 0, y: ly + 9}); t.textContent = ln === 'shows' ? 'Shows' : 'Adds'; svg.append(t);
+    const t = s('text', {x: 0, y: ly + 9}); t.textContent = ln === 'shows' ? 'Shows' : ln === 'paid' ? 'Paid' : 'Adds'; svg.append(t);
     svg.append(s('line', {x1: ml, x2: W - mr, y1: ly + 6, y2: ly + 6, stroke: 'var(--grid)'}));
     if (ln === 'shows'){ for (const bd of bands) svg.append(s('rect', {x: x(Math.max(a, bd.d0)) - 1, y: ly + 1, width: Math.max(3, x(Math.min(b, bd.d1)) - x(Math.max(a, bd.d0)) + 2), height: 10, rx: 3, fill: 'var(--s-tour)', 'fill-opacity': .35}));
       for (const sh of (cfg.shows || SHOWS)){ const d = idx(sh.date); if (d < a || d > b) continue; svg.append(s('rect', {x: x(d) - 1, y: ly + 1, width: 2, height: 10, fill: 'var(--s-tour)', 'fill-opacity': sh.status === 'TBC' ? .4 : 1})); } }
+    else if (ln === 'paid'){ for (const p of paidBands()){ if (p.d1 < a || p.d0 > b) continue; svg.append(s('rect', {x: x(Math.max(a, p.d0)) - 1, y: ly + (p.kind === 'sp' ? 0 : 7), width: Math.max(3, x(Math.min(b, p.d1)) - x(Math.max(a, p.d0)) + 2), height: 5, rx: 2, fill: p.kind === 'sp' ? 'var(--s-paid)' : 'var(--s-creator)', 'fill-opacity': .9})); } }
     else { for (const k in cfg.adds){ const d = +k; if (d < a || d > b) continue; svg.append(s('circle', {cx: x(d), cy: ly + 6, r: Math.min(5.5, 2.5 + cfg.adds[k].length * .5), fill: 'var(--s-play)', 'fill-opacity': .85, stroke: 'var(--surface)', 'stroke-width': 1})); } }
     ly += laneH; }
   // hover layer
@@ -711,6 +716,7 @@ function drawChart(el, cfg){
     if (cfg.ov.shows) for (const sh of (cfg.shows || SHOWS)){ const d = idx(sh.date); if (near(d)) ev.push(['var(--s-tour)', fmtD(d, {year: undefined}) + ' · ' + [sh.venue, sh.city].filter(Boolean).join(', ')]); }
     if (cfg.ov.pl) for (let d = i - tol; d <= i + tol; d++) for (const p of (cfg.adds[d] || [])) ev.push(['var(--s-play)', p.playlist + ' (' + p.platform.replace(' Music', '') + ') · ' + p.track]);
     for (const m of miles) if (near(m.day)) ev.push(['var(--s-mile)', m.title]);
+    if (lanes.includes('paid')) for (const p of paidBands()) if (i >= p.d0 && i <= p.d1) ev.push([p.kind === 'sp' ? 'var(--s-paid)' : 'var(--s-creator)', p.text]);
     if (ev.length){ const box = h('div', {class: 'ev'}); ev.slice(0, 7).forEach(([c, t]) => box.append(h('div', {class: 'r', style: 'justify-content:flex-start'}, h('i', {class: 'key', style: 'background:' + c + ';flex:none'}), h('span', {text: t}))));
       if (ev.length > 7) box.append(h('div', {class: 'note', text: '+' + (ev.length - 7) + ' more'})); tip.append(box); }
     tip.hidden = false; const tw = tip.offsetWidth; let left = xx + 14; if (left + tw > W) left = xx - tw - 14; tip.style.left = Math.max(0, left) + 'px'; tip.style.top = (mt + 4) + 'px';
@@ -771,7 +777,7 @@ function renderKpis(){ const R = rng(), box = document.getElementById('kpis'); b
               : kpi('Next show', '—', dbState === 'off' ? 'Open on claude.ai to load shows' : 'No upcoming shows logged'));
   box.querySelector('.kpi:nth-child(4) .v').style.fontSize = '19px'; }
 function renderOverlays(){ const box = document.getElementById('overlays'); box.textContent = '';
-  const items = [['rel', 'Releases', 'dot', 'var(--s-release)'], ['shows', 'Shows', 'band', 'var(--s-tour)'], ['pl', 'Editorial adds', 'dot', 'var(--s-play)'], ['mile', 'Milestones', 'dia', 'var(--s-mile)']];
+  const items = [['rel', 'Releases', 'dot', 'var(--s-release)'], ['shows', 'Shows', 'band', 'var(--s-tour)'], ['pl', 'Editorial adds', 'dot', 'var(--s-play)'], ['mile', 'Milestones', 'dia', 'var(--s-mile)'], ...(D.marketing ? [['paid', 'Paid push', 'band', 'var(--s-paid)']] : [])];
   box.append(h('span', {class: 'chip', style: 'cursor:default', 'aria-pressed': 'true'}, h('i', {class: 'key', style: 'background:var(--s-streams)'}), 'Streams'));
   for (const [k, l, cls, c] of items) box.append(h('button', {class: 'chip', 'aria-pressed': String(st.overlays[k]), onclick: () => { st.overlays[k] = !st.overlays[k]; renderOverlays(); renderMain(); renderDetail(); renderSpChart(); renderMarkets(); renderUSMarkets(); }}, h('i', {class: 'key ' + cls, style: 'background:' + c}), l)); }
 function renderMain(){ const R = rng();
@@ -2445,6 +2451,7 @@ function insights(){ const out = []; const add = (lvl, score, o) => out.push(Obj
   // 8. editorial removals
   T(() => { const rem = (D.plChanges || []).filter(c => c.type === 'remove' && idx(c.date) >= today - 8); if (rem.length) add('watch', 40, {title: rem.length + ' editorial playlist removal' + (rem.length > 1 ? 's' : '') + ' this week', ev: rem.slice(0, 4).map(c => c.playlist + ' (' + [c.platform, c.track].filter(Boolean).join(', ') + ')').join('; ') + '.', act: 'Expect a dip on those songs; check whether a replacement pitch is due.', go: ['All placements', 'playlists']}); });
   T(() => cbInsights(add, songs));
+  T(() => mkInsights(add));
   const ord = {act: 0, opp: 1, watch: 2, win: 3}; return out.sort((x, y) => ord[x.lvl] - ord[y.lvl] || y.score - x.score); }
 function renderInsights(){ const box = document.getElementById('insightlist'); if (!box) return; box.textContent = ''; const L = insights();
   if (!L.length){ box.append(h('div', {class: 'empty', text: 'Nothing stands out this week.'})); return; }
@@ -2488,12 +2495,12 @@ function renderCobrand(){ const box = document.getElementById('cobrandbox'); if 
       h('div', {class: 'stats'}, h('div', null, h('b', {text: fmtN(tv)}), 'views from ' + fmtF(tp) + ' posts'), h('div', null, h('b', {text: pct(K.reduce((s2, c) => s2 + c.core[1], 0) / Math.max(1, tv), 0)}), 'of views from creators in Wade’s markets'), h('div', null, h('b', {text: fmtN(K.filter(c => c.type === 'Influencer').reduce((s2, c) => s2 + c.views, 0))}), 'from influencer posts')),
       dup ? h('p', {class: 'note', style: 'margin:4px 0 6px', text: dup + ' posts were listed in two campaigns, so co:brand’s own total (' + fmtN(lv) + ') counts ' + fmtN(lv - tv) + ' views twice. Each post is counted once here, in the campaign it was added to first.'}) : null,
       h('div', {class: 'tablewrap'}, h('table', {class: 'ptable'}, h('thead', null, h('tr', null, h('th', {text: 'Campaign'}), h('th', {text: 'Type'}), h('th', {text: 'Posts dated'}), h('th', {class: 'r', text: 'Posts'}), h('th', {class: 'r', text: 'Views'}), h('th', {class: 'r', text: 'Typical post'}), h('th', {class: 'r', text: 'Under 1K views'}), h('th', {class: 'r', text: 'From Wade’s markets'}), h('th', {text: 'Creator countries'}))),
-        h('tbody', null, K.map(c => [h('tr', {class: 'click', style: 'cursor:pointer', onclick: () => { st.cbCamp = open === c.id ? null : c.id; renderCobrand(); }}, h('td', {text: (open === c.id ? '▾ ' : '▸ ') + c.label}), h('td', {text: c.type}), h('td', {class: 'muted', text: c.first ? fmtD(idx(c.first), {year: undefined}) + ' – ' + fmtD(idx(c.last), {year: undefined}) : '—'}),
+        h('tbody', null, K.map(c => [h('tr', {class: 'click', style: 'cursor:pointer', onclick: () => { st.cbCamp = open === c.id ? null : c.id; renderCobrand(); }}, h('td', {text: (open === c.id ? '▾ ' : '▸ ') + cbLabel(c)}), h('td', {text: c.type}), h('td', {class: 'muted', text: c.first ? fmtD(idx(c.first), {year: undefined}) + ' – ' + fmtD(idx(c.last), {year: undefined}) : '—'}),
           h('td', {class: 'r num', text: fmtF(c.posts)}), h('td', {class: 'r num', text: fmtN(c.views)}), h('td', {class: 'r num', text: fmtN(c.med)}), h('td', {class: 'r num', text: pct(c.u1k / Math.max(1, c.posts), 0)}),
           h('td', {class: 'r num ' + (c.core[1] / Math.max(1, c.views) >= .5 ? 'delta up' : 'delta down'), text: pct(c.core[1] / Math.max(1, c.views), 0) + ' of views'}), h('td', {class: 'muted', text: c.cc.slice().sort((x, y) => y[1] - x[1]).slice(0, 4).map(x => cbName(x[0]) + ' ' + x[1]).join(' · ') + ' posts'})),
           open === c.id ? h('tr', null, h('td', {colspan: 9}, h('div', {class: 'note', style: 'margin:2px 0 6px', text: 'Top posts (views, creator country). ' + c.own[0] + ' of ' + c.posts + ' posts use one of Wade’s songs as the sound. ' + Object.entries(c.plat || {}).map(([k, v]) => (k === 'TT' ? 'TikTok' : 'Instagram') + ': ' + v[0] + ' posts, ' + fmtN(v[1]) + ' views').join('; ') + '.'}),
             h('ul', {class: 'fbars'}, c.top.map(p => h('li', null, h('a', {href: p[6], target: '_blank', rel: 'noopener', text: '@' + p[5] + ' (' + (p[0] === 'TT' ? 'TikTok' : 'Instagram') + ', ' + cbName(p[1] || '?') + ', ' + fmtD(idx(p[4]), {year: undefined}) + ')'}), h('i', {style: 'width:' + Math.max(1, p[2] / Math.max(1, c.top[0][2]) * 100) + '%'}), h('b', {text: fmtN(p[2])})))))) : null]).flat()))),
-      h('p', {class: 'note', style: 'margin:4px 0 0', text: 'Wade’s markets = creators based in the US, Canada, Australia, New Zealand, the UK and Ireland. Country is where the creator’s account is, not where viewers are. Click a campaign for its top posts. Spend is not shown.'})); }
+      h('p', {class: 'note', style: 'margin:4px 0 0', text: 'Wade’s markets = creators based in the US, Canada, Australia, New Zealand, the UK and Ireland. Country is where the creator’s account is, not where viewers are. Click a campaign for its top posts. ' + (PM ? 'Business names from the Monthly Advertising sheet; spend and cost per view are under Campaigns → Paid marketing.' : 'Spend is not shown.')})); }
   // 4. fanbase
   const F = CB.fans; if (F) box.append(h('h3', {class: 'fh', text: 'Fanbase'}), h('div', {class: 'stats'}, h('div', null, h('b', {text: fmtF(F.total)}), 'engaged fans (+' + fmtF(F.new30) + ' in 30 days)'), h('div', null, h('b', {text: fmtF(F.superfans)}), 'superfans (+' + fmtF(F.superNew30) + ')'), h('div', null, h('b', {text: fmtF(F.firstParty)}), 'fans with direct contact (email or SMS)')),
     h('p', {class: 'note', style: 'margin:4px 0 0', text: 'co:brand counts people who regularly comment on, share or make videos with Wade’s content.' + (!F.email && !F.sms ? ' Email and SMS sign-ups (Drops) are not set up yet, so none of these fans can be contacted directly.' : '')}));
@@ -2508,6 +2515,81 @@ function cbInsights(add, songs){ if (!CB) return;
   const top3 = songs.slice(0, 3).map(x => x.t); const miss = top3.filter(t => !cbSong(t)); if (miss.length) add('watch', 28, {title: miss.map(t => t.name).join(', ') + (miss.length > 1 ? ' aren’t' : ' isn’t') + ' tracked in co:brand', ev: 'Top 3 by streams this week, but not one of the 5 songs unlocked in co:brand, so fan videos aren’t being counted.', act: 'Swap a quieter song for ' + miss[0].name + ' in co:brand’s Catalog.', go: ['Creator content', 'cobrand']});
   const F = CB.fans; if (F && !F.firstParty && F.total > 1000) add('opp', 26, {title: 'None of Wade’s ' + fmtN(F.total) + ' engaged fans can be contacted directly', ev: 'co:brand counts ' + fmtF(F.total) + ' engaged fans and ' + fmtF(F.superfans) + ' superfans, but email and SMS sign-ups aren’t set up.', act: 'Set up a co:brand Drop (sign-up page) for the next release or the US tour to start collecting contacts.', go: ['Creator content', 'cobrand']}); }
 
+// ---------- paid marketing: INTERNAL build only (assemble.py strips D.marketing from the public/standalone copy) ----------
+const PM = D.marketing || null;
+const MKSP = PM && PM.spotify ? (PM.spotify.subs || []) : [];
+const mkMoney = (v, c) => (c || '$') + (Math.abs(v) >= 1000 || v % 1 === 0 ? Math.round(v).toLocaleString('en-AU') : v.toLocaleString('en-AU', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+const mkMonth = m => new Date(Date.parse(m + '-01T00:00:00Z')).toLocaleDateString('en-AU', {month: 'long', year: 'numeric', timeZone: 'UTC'});
+function cbLabel(c){ const v = PM && PM.cobrand && PM.cobrand[c.id]; return v ? c.label + ' · ' + v[0] : c.label; }
+function mkSpend(id){ if (!PM) return null; for (const m of PM.monthly || []) for (const l of m.lines || []) if (l.cobrand === id && l.actual) return l.actual; return null; }
+function mkGroups(){ const g = {};
+  for (const s of MKSP){ const k = s.song + '|' + s.start; const o = g[k] || (g[k] = {song: s.song, start: s.start, d0: idx(s.start), d1: idx(s.end), fmt: s.fmt, status: s.status, spent: 0, budget: 0, clicks: 0, conv: 0, ir: [], subs: []});
+    o.d1 = Math.max(o.d1, idx(s.end)); o.spent += s.spent; o.budget += s.budget; o.clicks += s.clicks; o.conv += s.conv; o.ir.push([s.ir, s.clicks]); o.subs.push(s); if (s.status === 'Active') o.status = 'Active'; }
+  return Object.values(g).map(o => Object.assign(o, {irW: o.ir.reduce((a, [r, c]) => a + r * c, 0) / Math.max(1, o.ir.reduce((a, [, c]) => a + c, 0))})).sort((a, b) => b.d0 - a.d0 || (a.song < b.song ? -1 : 1)); }
+function paidBands(){ if (!PM) return []; const out = mkGroups().map(o => ({kind: 'sp', d0: o.d0, d1: o.d1, text: 'Spotify ' + o.fmt + ': ' + o.song + ' (' + [...new Set(o.subs.map(s => s.mkt))].join(', ') + ', ' + mkMoney(o.spent, 'A$') + ')'}));
+  for (const c of (CB && CB.campaigns) || []){ const v = PM.cobrand && PM.cobrand[c.id]; if (!v || !c.first) continue; const sp = mkSpend(c.id);
+    out.push({kind: 'cr', d0: idx(c.first), d1: idx(c.last), text: v[0] + ' ' + v[1] + (sp ? ' (' + mkMoney(sp) + ')' : '')}); }
+  return out; }
+function mkSongAvg(song, a, b){ const k = norm(song); let ts = TR.filter(t => t.key === k); if (!ts.length) ts = TR.filter(t => t.project && norm(t.project.replace(' (Album)', '')) === k); if (!ts.length || a < Math.min(...ts.map(t => t.o))) return null;
+  b = Math.min(b, LAST); if (b < a) return null; let s2 = 0; for (let i = a; i <= b; i++) for (const t of ts) s2 += tv(t, i); return s2 / (b - a + 1); }
+function renderMkt(){ const sec = document.getElementById('mkt-sec'), box = document.getElementById('mkt'); if (!sec || !box) return; sec.hidden = !PM; box.textContent = ''; if (!PM) return;
+  const G = mkGroups(); const spT = MKSP.reduce((a, s) => a + s.spent, 0), cvT = MKSP.reduce((a, s) => a + s.conv, 0), clT = MKSP.reduce((a, s) => a + s.clicks, 0);
+  const lines = (PM.monthly || []).flatMap(m => (m.lines || []).map(l => Object.assign({month: m.month}, l)));
+  const act = lines.filter(l => l.actual), actT = act.reduce((a, l) => a + l.actual, 0); const lastAct = act.map(l => l.month).sort().pop();
+  const CR = ((CB && CB.campaigns) || []).filter(c => PM.cobrand && PM.cobrand[c.id]).map(c => ({c, v: PM.cobrand[c.id], sp: mkSpend(c.id)})).sort((p, q) => (p.c.first < q.c.first ? -1 : 1));
+  const crSp = CR.reduce((a, x) => a + (x.sp || 0), 0), crV = CR.filter(x => x.sp).reduce((a, x) => a + x.c.views, 0);
+  const tile = (l, v, s2) => h('div', {class: 'soc'}, h('div', {class: 'eyebrow', text: l}), h('div', {class: 'v', text: v}), h('div', {class: 'note', text: s2}));
+  box.append(h('p', {class: 'note', style: 'margin:0 0 10px', text: 'Internal: spend and the businesses engaged. This section is only in the claude.ai dashboard; the public website copy leaves it out.'}),
+    h('div', {class: 'social', style: 'grid-template-columns:repeat(auto-fit,minmax(170px,1fr))'},
+      tile('Recorded spend, sheet', mkMoney(actT), 'Actuals ' + mkMonth(act.map(l => l.month).sort()[0]) + ' – ' + mkMonth(lastAct) + ', ' + new Set(act.map(l => l.vendor).filter(Boolean)).size + ' businesses'),
+      tile('Spotify ads', mkMoney(spT, 'A$'), MKSP.length + ' ads in ' + G.length + ' campaigns since ' + fmtD(Math.min(...G.map(o => o.d0)), {year: undefined})),
+      tile('Converted listeners', fmtN(cvT), mkMoney(spT / Math.max(1, cvT), 'A$') + ' each · ' + fmtN(clT) + ' clicks'),
+      crV ? tile('Creator campaign views', fmtN(crV), mkMoney(crSp / crV * 1000) + ' per 1,000 views (' + CR.filter(x => x.sp).length + ' campaigns with spend)') : null));
+  // Spotify ads
+  const open = st.mkOpen || {};
+  box.append(h('h3', {class: 'fh', text: 'Spotify Marquee & Showcase ads'}),
+    h('div', {class: 'tablewrap'}, h('table', {class: 'ptable'}, h('thead', null, h('tr', null, ['Campaign', 'Dates', 'Format', 'Markets'].map(t => h('th', {text: t})), ['Spent', 'Clicks', 'Converted', 'Intent rate', 'Per converted', 'Streams/day before → during'].map(t => h('th', {class: 'r', text: t})))),
+      h('tbody', null, G.map(o => { const key = o.song + o.start; const pre = mkSongAvg(o.song, o.d0 - 14, o.d0 - 1), dur = mkSongAvg(o.song, o.d0, o.d1); const isAlbum = !TR.some(t => t.key === norm(o.song));
+        const lift = pre && dur && pre > 50 ? (dur / pre - 1) : null;
+        return [h('tr', {class: 'click', style: 'cursor:pointer', onclick: () => { st.mkOpen = Object.assign({}, open, {[key]: !open[key]}); renderMkt(); }},
+          h('td', {text: (open[key] ? '▾ ' : '▸ ') + o.song + (isAlbum ? ' (album)' : '') + (o.status === 'Active' ? ' · running' : '')}), h('td', {class: 'muted', text: fmtD(o.d0, {year: undefined}) + ' – ' + fmtD(o.d1, {year: undefined})}), h('td', {text: o.fmt}), h('td', {text: [...new Set(o.subs.map(s => s.mkt))].join(', ')}),
+          h('td', {class: 'r num', text: mkMoney(o.spent, 'A$') + (o.spent < o.budget ? ' of ' + mkMoney(o.budget, 'A$') : '')}), h('td', {class: 'r num', text: fmtF(o.clicks)}), h('td', {class: 'r num', text: fmtF(o.conv)}),
+          h('td', {class: 'r num ' + (o.irW >= 28 ? 'delta up' : o.irW < 22 ? 'delta down' : ''), text: o.irW.toFixed(1) + '%'}), h('td', {class: 'r num', text: mkMoney(o.spent / Math.max(1, o.conv), 'A$')}),
+          h('td', {class: 'r num', text: dur == null ? '—' : (pre && pre > 50 ? fmtN(pre) + ' → ' + fmtN(dur) : 'launch · ' + fmtN(dur))}, lift != null ? h('span', {class: 'sub delta ' + (lift >= 0 ? 'up' : 'down'), text: (lift >= 0 ? '+' : '') + pct(lift, 0)}) : null)),
+          open[key] ? h('tr', null, h('td', {colspan: 10}, h('ul', {class: 'note', style: 'margin:2px 0 6px;padding-left:18px'}, o.subs.map(s => h('li', {text: s.mkt + ': ' + mkMoney(s.spent, 'A$') + (s.spent < s.budget ? ' of ' + mkMoney(s.budget, 'A$') : '') + ', ' + fmtD(idx(s.start), {year: undefined}) + ' – ' + fmtD(idx(s.end), {year: undefined}) + ', ' + fmtF(s.clicks) + ' clicks, ' + fmtF(s.conv) + ' converted (' + s.ir + '% intent), ' + mkMoney(s.spent / Math.max(1, s.conv), 'A$') + ' each'}))))) : null]; }).flat()))),
+    h('p', {class: 'note', style: 'margin:4px 0 0', text: 'From Spotify for Artists, as at ' + fmtD(idx(PM.spotify.asOf)) + '. Converted listeners = people who streamed after seeing the ad; intent rate = share of them who went on to save, playlist or replay (Spotify’s measure). Streams per day are Luminate, all DSPs, for the song (album: all its tracks), averaged over the 14 days before and the ad’s run; other activity in the same weeks also moves these. Click a row for each market.'}));
+  // creator campaigns with spend
+  if (CR.length) box.append(h('h3', {class: 'fh', text: 'Creator campaigns: spend vs views'}),
+    h('div', {class: 'tablewrap'}, h('table', {class: 'ptable'}, h('thead', null, h('tr', null, ['Business', 'Campaign', 'Posts dated'].map(t => h('th', {text: t})), ['Spend', 'Posts', 'Views', 'Per 1,000 views', 'From Wade’s markets'].map(t => h('th', {class: 'r', text: t})))),
+      h('tbody', null, CR.map(({c, v, sp}) => h('tr', null, h('td', {text: v[0] + (v[2] ? ' *' : '')}), h('td', {text: v[1]}), h('td', {class: 'muted', text: fmtD(idx(c.first), {year: undefined}) + ' – ' + fmtD(idx(c.last), {year: undefined})}),
+        h('td', {class: 'r num', text: sp ? mkMoney(sp) : '—'}), h('td', {class: 'r num', text: fmtF(c.posts)}), h('td', {class: 'r num', text: fmtN(c.views)}), h('td', {class: 'r num', text: sp ? mkMoney(sp / Math.max(1, c.views) * 1000) : '—'}),
+        h('td', {class: 'r num ' + (c.core[1] / Math.max(1, c.views) >= .5 ? 'delta up' : 'delta down'), text: pct(c.core[1] / Math.max(1, c.views), 0)})))))),
+    h('p', {class: 'note', style: 'margin:4px 0 0', text: 'Views and posts from co:brand (each post counted once); spend from the Monthly Advertising sheet. * Phase 1 campaigns are matched to the sheet’s June lines by phase and timing; Phase 2 campaigns name the business in co:brand.'}));
+  // spend by month
+  const months = (PM.monthly || []).slice(); const spByMonth = {}; for (const s of MKSP){ const m = s.start.slice(0, 7); spByMonth[m] = (spByMonth[m] || 0) + s.spent; }
+  box.append(h('h3', {class: 'fh', text: 'Spend by month'}),
+    h('div', {class: 'tablewrap'}, h('table', {class: 'ptable'}, h('thead', null, h('tr', null, h('th', {text: 'Month'}), h('th', {text: 'Line'}), h('th', {text: 'Business'}), h('th', {text: 'Channel'}), h('th', {class: 'r', text: 'Actual'}), h('th', {class: 'r', text: 'Forecast'}))),
+      h('tbody', null, months.map(m => { const L = m.lines || []; const a = L.reduce((s2, l) => s2 + (l.actual || 0), 0), f = L.reduce((s2, l) => s2 + (l.forecast || 0), 0);
+        return [...L.map((l, k) => h('tr', null, h('td', {class: 'muted', text: k ? '' : mkMonth(m.month)}), h('td', null, l.link ? h('a', {href: l.link, target: '_blank', rel: 'noopener', text: l.item}) : l.item), h('td', {text: l.vendor || '—'}), h('td', {class: 'muted', text: l.channel}),
+            h('td', {class: 'r num', text: l.actual ? mkMoney(l.actual) : '—'}), h('td', {class: 'r num muted', text: l.forecast ? mkMoney(l.forecast) : ''}))),
+          L.length ? h('tr', null, h('td'), h('td', {class: 'strong', text: 'Total'}), h('td'), h('td'), h('td', {class: 'r num strong', text: mkMoney(a)}), h('td', {class: 'r num muted', text: f ? mkMoney(f) : ''})) : h('tr', null, h('td', {class: 'muted', text: mkMonth(m.month)}), h('td', {colspan: 5, class: 'muted', text: m.note || 'No lines.'}))]; }).flat(),
+        Object.keys(spByMonth).filter(m => m > lastAct).sort().map(m => h('tr', null, h('td', {class: 'muted', text: mkMonth(m)}), h('td', {text: 'Spotify ads (not in the sheet)'}), h('td', {text: 'Spotify'}), h('td', {class: 'muted', text: 'Marquee / Showcase'}), h('td', {class: 'r num', text: mkMoney(spByMonth[m], 'A$')}), h('td')))))),
+    h('p', {class: 'note', style: 'margin:4px 0 0'}, 'Amounts as entered in the ', h('a', {href: PM.sheet, target: '_blank', rel: 'noopener', text: 'Monthly Advertising sheet'}), ', which has no actuals after ' + mkMonth(lastAct) + '. The sheet doesn’t name its currency; its June Spotify line ($4,000) matches the A$6,000 Spotify billed for June ads at about US$0.66, so it is likely US$. Spotify rows after ' + mkMonth(lastAct) + ' are A$, by the month each ad started.'));
+  // businesses
+  const byV = {}; for (const l of act) if (l.vendor) byV[l.vendor] = (byV[l.vendor] || 0) + l.actual;
+  box.append(h('h3', {class: 'fh', text: 'Businesses engaged'}),
+    h('div', {class: 'social', style: 'grid-template-columns:repeat(auto-fit,minmax(220px,1fr))'}, (PM.vendors || []).map(v => h('div', {class: 'soc'}, h('div', {class: 'eyebrow', text: v.name}),
+      h('div', {class: 'v', text: v.name === 'Spotify' ? mkMoney(spT, 'A$') : byV[v.name] ? mkMoney(byV[v.name]) : '—'}), h('div', {class: 'note', text: v.what + (v.results ? ' ' + v.results : '')}),
+      h('div', {class: 'note', style: 'margin-top:4px'}, (v.links || []).map(([t, u], k) => [k ? ' · ' : '', h('a', {href: u, target: '_blank', rel: 'noopener', text: t + ' ↗'})]).flat()))))); }
+function mkInsights(add){ if (!PM || !MKSP.length) return;
+  const done = MKSP.filter(s => s.status === 'Completed'), base = done.reduce((a, s) => a + s.ir * s.clicks, 0) / Math.max(1, done.reduce((a, s) => a + s.clicks, 0));
+  for (const s of MKSP.filter(s => s.status === 'Active' && s.clicks >= 100)) if (s.ir < base - 6) add('watch', 57, {title: s.song + ' ' + s.mkt + ' Showcase is converting weaker listeners than past ads', song: s.song,
+    ev: 'Intent rate ' + s.ir + '% so far against ' + base.toFixed(0) + '% across all completed Marquee and Showcase ads; ' + mkMoney(s.spent, 'A$') + ' of ' + mkMoney(s.budget, 'A$') + ' spent, runs to ' + fmtD(idx(s.end), {year: undefined}) + '.',
+    act: 'Compare its audience targeting with the September Marquee ads (about 30%) in Spotify for Artists, and consider moving the remaining budget.', go: ['Paid marketing', 'mkt-sec']});
+  const lastAct = (PM.monthly || []).filter(m => (m.lines || []).some(l => l.actual)).map(m => m.month).sort().pop();
+  const since = MKSP.filter(s => s.start.slice(0, 7) > lastAct); const amt = since.reduce((a, s) => a + s.spent, 0);
+  if (lastAct && amt) add('watch', 22, {title: 'The Monthly Advertising sheet has no spend after ' + mkMonth(lastAct), ev: mkMoney(amt, 'A$') + ' of Spotify ads since then (' + since.length + ' ads) aren’t in it, and July and August show forecasts only.', act: 'Add actuals for July–October so total spend per release can be tracked here.', go: ['Paid marketing', 'mkt-sec']}); }
+
 // ---------- tabs (each tab renders when opened) ----------
 const TABS = [['overview', 'Overview'], ['songs', 'Songs & releases'], ['platforms', 'Platforms'], ['audience', 'Audience & markets'], ['live', 'Live'], ['milestones', 'Milestones'], ['campaigns', 'Campaigns']];
 let curTab = 'overview';
@@ -2518,7 +2600,7 @@ const TAB_RENDER = {
   audience: () => { renderMkViews(); if (st.mkView === 'countries'){ renderMarkets(); renderTerr(); } else renderUSMarkets(); },
   live: () => { renderShows(); },
   milestones: () => { renderMiles(); },
-  campaigns: () => { renderAAA(); },
+  campaigns: () => { renderMkt(); renderAAA(); },
 };
 function renderTab(t){ (TAB_RENDER[t] || (() => {}))(); renderScopes(); }
 function showTab(t, opts){ if (!TAB_RENDER[t]) t = 'overview'; curTab = t;
